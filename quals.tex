@@ -1,0 +1,85 @@
+\documentclass[10pt]{article}
+
+\usepackage{amsmath}
+\usepackage{enumerate}
+\usepackage{fancyvrb}
+\usepackage{amsfonts,graphicx}
+\usepackage[usenames, dvipsnames]{color}
+\usepackage{tikz}
+
+%\setlength{\parindent}{4em}
+%\setlength{\parskip}{1em}
+%\renewcommand{\baselinestretch}{1.5}
+
+
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{enumitem}
+
+\begin{document}
+\title{Qualifying Exam}
+\author{Ambrose Bonnaire-Sergeant (0003410123)}
+
+\maketitle
+
+% Below are the three questions you should answer for your qualifying
+% exam. You have three months to complete a written report answering
+% these three questions.
+
+\section*{Question 1}
+
+\begin{verbatim}
+Analyze the space and time complexity of your approach to dynamic
+tracing & subsequent type inference for Typed Clojure.  Are you able
+to bound space use at all by reducing traces as they are collected?
+Please analyze a related system, Daikon
+(https://plse.cs.washington.edu/daikon/), along the same lines.  How
+expressive are Daikons invariants compared to yours?  How much space
+and runtime overhead does it impose?  If Daikon's inferred invariants
+were to become part of a (refinement) type system, how powerful would
+it need to be?
+\end{verbatim}
+
+\subsection*{Space/time complexity of dynamic tracing}
+
+\subsection*{Space/time complexity of type inference}
+
+\subsection*{Can space use be bounded by reducing traces as collected?}
+
+\subsection*{Daikon's expressivity}
+
+\subsection*{Space/time overhead of Daikon}
+
+\subsection*{How to type check Daikon's invariants}
+
+% Notes:
+%  Java implementation:
+%    Chicory does instrumentation on JVM bytecode
+%     instrument_all_methods: https://github.com/codespecs/daikon/blob/master/java/daikon/chicory/Instrument.java#L409
+
+\section*{Question 2}
+
+\begin{verbatim}
+Examine the use of Clojure's core.spec contract system in several
+real world code bases. Look at what features are used, and how precise
+specifications are. Analyze how specifications address the lack of
+higher-order contracts by looking at the frequency of higher-order function
+contracts vs higher-order functions that omit specifications of higher-order
+arguments or results.
+\end{verbatim}
+
+\subsection*{What spec features are used in real systems}
+
+\subsection*{How precise are spec annotations in practice?}
+
+\subsection*{How frequently are higher-order functions annotated with higher-order specs? Why?}
+
+\section*{Question 3}
+
+\begin{verbatim}
+Write a formal model of Clojure with core.spec, and implement it in
+PLT Redex. Formulate a consistency property between contracted and
+uncontracted execution, and test it in redex.
+\end{verbatim}
+
+\end{document}
