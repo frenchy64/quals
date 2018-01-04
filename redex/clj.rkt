@@ -173,7 +173,6 @@
   injclj : M -> ς
   [(injclj M) ((M (rho)) (frames))])
 
-
 (define-extended-language ClojureSpec Clojure
   (FS ::= (DefFSpec (SP ...) SP))
   (SP  ::= L O1)
@@ -210,7 +209,7 @@
    vρ ClojureSpec #:domain C
    
    (--> ((gen-spec SP) ρ) (gen-spec SP) ρ-gen-spec)
-   (--> ((assert-spec M SP) ρ) (assert-spec (M ρ) S) ρ-assert-spec)
+   (--> ((assert-spec M SP) ρ) (assert-spec (M ρ) SP) ρ-assert-spec)
   
    ;; AssertSpec
    (--> (assert-spec ((fn [X ...] M) ρ)
@@ -286,10 +285,7 @@
         assert-fspec-gen)))
 
 (define -->vspec-hof
-  (extend-reduction-relation
-   ;; Apply
-   (context-closure -->vspec ClojureSpecHOF (hole K))
-   ClojureSpecHOF))
+  (-->v/multi vρ-spec-hof ClojureSpecHOF))
 
 (define-syntax-rule (clj/def defname name args body)
   (define-term defname
