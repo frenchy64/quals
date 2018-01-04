@@ -1,18 +1,19 @@
 #lang racket
 
-
 (require redex)
 (define-language Clojure
+  ; simple expressions that throw away their closures
+  (CNST :: = X N O B NIL (HashMap) ERR)
+  ;; expressions
   (M ::=
-     N O X L LN B NIL
-     (HashMap)
+     CNST L LN
      (M M ...)
-     (if M M M)
-     ERR)
+     (if M M M))
   (X ::= variable-not-otherwise-mentioned)
   (ERR ::= (error any))
   (L ::= (fn [X ...] M))
   (LN ::= (fn X [X ...] M))
+  ; non-error values
   (NONERRV ::= N O (L ρ) (LN ρ) B H NIL)
   (V ::= NONERRV ERR)
   (H ::= (HashMap (NONERRV NONERRV) ...))
@@ -27,14 +28,12 @@
   ; serious terms S ∩ V = ∅, C = S ∪ V
   ; note: (L ρ), (LN ρ) ∉ S
   (S ::=
-     (N ρ)
-     (O ρ)
-     (X ρ)
+     (CNST ρ)
      ((M M ...) ρ)
      ((if M M M) ρ)
      (if C C C) (C C ...))
   ; domain of closures
-  (C ::= V S)
+  (C ::= V (M ρ) (if C C C) (C C ...))
   ;; continuation frames
   (K ::= (frames F ...))
   (F ::= (NONERRV ... [] C ...) (if [] C C))
@@ -117,52 +116,58 @@
         (judgment-holds (lookup ρ X V))
         ρ-x)
   
-   (--> (((fn [X ...] M) ρ) NONERRV ...)
-        (M (ext ρ (X NONERRV) ...))
+   (--> (((fn [X ...] M) ρ) V ...)
+        (M (ext ρ (X V) ...))
         (judgment-holds (unique (X ...)))
         β)
 
-   (--> ((name f ((fn X_f [X ...] M) ρ)) NONERRV ...)
-        (M (ext ρ (X_f f) (X NONERRV) ...))
+   (--> ((name f ((fn X_f [X ...] M) ρ)) V ...)
+        (M (ext ρ (X_f f) (X V) ...))
         (judgment-holds (unique (X ...)))
         rec-β)
   
-   (--> (O NONERRV ...) V_1
-        (judgment-holds (δ (O NONERRV ...) V_1))
+   (--> (O V ...) V_1
+        (judgment-holds (δ (O V ...) V_1))
         δ)
 
-   (--> (if NONERRV C_1 C_2) C_1
-        (side-condition (truthy? (term NONERRV)))
+   (--> (if V C_1 C_2) C_1
+        (side-condition (truthy? (term V)))
         if-t)
-   (--> (if NONERRV C_1 C_2) C_2
-        (side-condition (not (truthy? (term NONERRV))))
+   (--> (if V C_1 C_2) C_2
+        (side-condition (not (truthy? (term V))))
         if-f)))
 
-(define -->vς
-  (extend-reduction-relation
-   ;; Apply
-   (context-closure vρ Clojure (hole K))
-   Clojure
-   ;; Eval
-   (--> ((if0 S_0 C_1 C_2) (frames F ...))
-        (S_0 (frames (if0 [] C_1 C_2) F ...))
-        ev-if)
+(define -->v
+  (-->v/multi vρ Clojure))
+
+(define-syntax-rule (-->v/multi vρ name . rest)
+  (...
+   (extend-reduction-relation
+    ;; Apply
+    (context-closure vρ name (hole K))
+    name
+    ;; Eval
+    (--> ((if S_0 C_1 C_2) (frames F ...))
+         (S_0 (frames (if [] C_1 C_2) F ...))
+         ev-if)
   
-   (--> ((NONERRV ... S C ...) (frames F ...))
-        (S (frames (NONERRV ... [] C ...) F ...))
-        ev-app)
+    (--> ((V ... S C ...) (frames F ...))
+         (S (frames (V ... [] C ...) F ...))
+         ev-app)
    
-   ; Continue
-   (--> (NONERRV (frames)) NONERRV halt-value)
-   (--> (ERR (frames F ...)) ERR halt-err)
+    ; Continue
+    (--> (NONERRV (frames)) NONERRV halt-value)
+    (--> (ERR (frames F ...)) ERR halt-err)
   
-   (--> (NONERRV (frames (if0 [] C_1 C_2) F ...))
-        ((if0 NONERRV C_1 C_2) (frames F ...))
-        co-if)
+    (--> (NONERRV (frames (if [] C_1 C_2) F ...))
+         ((if NONERRV C_1 C_2) (frames F ...))
+         co-if)
   
-   (--> (NONERRV (frames (NONERRV_0 ... [] C_0 ...) F ...))
-        ((NONERRV_0 ... NONERRV C_0 ...) (frames F ...))
-        co-app)))
+    (--> (NONERRV (frames (NONERRV_0 ... [] C_0 ...) F ...))
+         ((NONERRV_0 ... NONERRV C_0 ...) (frames F ...))
+         co-app)
+
+    . rest)))
 
 (define-metafunction Clojure
   injclj : M -> ς
@@ -172,8 +177,11 @@
 (define-extended-language ClojureSpec Clojure
   (FS ::= (DefFSpec (SP ...) SP))
   (SP  ::= L O1)
+  (C ::= .... (assert-spec C SP))
   ;; serious expressions
   (S ::= .... (assert-spec C SP))
+  ;; frame
+  (F ::= .... (assert-spec [] SP))
   (M ::= .... (gen-spec SP) (assert-spec M SP)))
 
 (define-extended-language ClojureSpecHOF ClojureSpec
@@ -199,8 +207,7 @@
 
 (define vρ-spec
   (extend-reduction-relation
-   (context-closure vρ ClojureSpec C)
-   ClojureSpec
+   vρ ClojureSpec #:domain C
    
    (--> ((gen-spec SP) ρ) (gen-spec SP) ρ-gen-spec)
    (--> ((assert-spec M SP) ρ) (assert-spec (M ρ) S) ρ-assert-spec)
@@ -239,54 +246,50 @@
             (error spec-error))
         assert-O1)))
 
-;(define -->vspec
-;  (extend-reduction-relation
-;   ;; Apply
-;   (context-closure vρ-spec ClojureSpec (hole K))
-;   ClojureSpec
-;
-;   ;; Eval
-;   (--> ((assert-spec S SP) (frames F ...))
-;        (S (frames (assert-spec [] SP) F ...)))
-;
-;   ;; Continue
-;   (--> (NONERRV (frames (assert-spec [] SP) F ...))
-;        ((assert-spec NONERRV SP) (frames F ...)))))
+(define -->vspec
+  (-->v/multi
+   vρ-spec ClojureSpec
+   ;; Eval
+   (--> ((assert-spec S SP) (frames F ...))
+        (S (frames (assert-spec [] SP) F ...)))
 
-;(define vρ-spec-hof
-;  (extend-reduction-relation
-;   (context-closure vρ-spec ClojureSpecHOF C)
-;   ClojureSpecHOF
-;
-;   ; prepare FSpec gen-count
-;   (--> (assert-spec ((fn [X ...] M) ρ)
-;                     (FSpec (SP_a ...) SP_r))
-;        (assert-spec ((fn [X ...] M) ρ)
-;                     (FSpec (SP_a ...) SP_r ,ngenerations))
-;        assert-fspec-init-gen-count)
-;
-;   (--> (assert-spec ((fn [X ...] M) ρ)
-;                     (FSpec (SP_a ...) SP_r 0))
-;        ((fn [X ...] M) ρ)
-;        assert-fspec-stop)
-; 
-;   (--> (assert-spec ((fn [X ...] M) ρ)
-;                     (FSpec (SP_a ...) SP_r N))
-;        (((fn [y]
-;              (do (assert-spec
-;                   (y (gen-spec SP_a) ...)
-;                   SP_r)
-;                (assert-spec y (FSpec (SP_a ...) SP_r ,(sub1 (term N))))))
-;          (rho))
-;         ((fn [X ...] M) ρ))
-;        (side-condition (< 0 (term N)))
-;        assert-fspec-gen)))
+   ;; Continue
+   (--> (NONERRV (frames (assert-spec [] SP) F ...))
+        ((assert-spec NONERRV SP) (frames F ...)))))
 
-;(define -->vρ-spec-hof
-;  (extend-reduction-relation
-;   ;; Apply
-;   (context-closure -->vspec ClojureSpecHOF (hole K))
-;   ClojureSpecHOF))
+(define vρ-spec-hof
+  (extend-reduction-relation
+   vρ-spec ClojureSpecHOF #:domain C
+
+   ; prepare FSpec gen-count
+   (--> (assert-spec ((fn [X ...] M) ρ)
+                     (FSpec (SP_a ...) SP_r))
+        (assert-spec ((fn [X ...] M) ρ)
+                     (FSpec (SP_a ...) SP_r ,ngenerations))
+        assert-fspec-init-gen-count)
+
+   (--> (assert-spec ((fn [X ...] M) ρ)
+                     (FSpec (SP_a ...) SP_r 0))
+        ((fn [X ...] M) ρ)
+        assert-fspec-stop)
+ 
+   (--> (assert-spec ((fn [X ...] M) ρ)
+                     (FSpec (SP_a ...) SP_r N))
+        (((fn [y]
+              (do (assert-spec
+                   (y (gen-spec SP_a) ...)
+                   SP_r)
+                (assert-spec y (FSpec (SP_a ...) SP_r ,(sub1 (term N))))))
+          (rho))
+         ((fn [X ...] M) ρ))
+        (side-condition (< 0 (term N)))
+        assert-fspec-gen)))
+
+(define -->vspec-hof
+  (extend-reduction-relation
+   ;; Apply
+   (context-closure -->vspec ClojureSpecHOF (hole K))
+   ClojureSpecHOF))
 
 (define-syntax-rule (clj/def defname name args body)
   (define-term defname
@@ -307,82 +310,95 @@
 
 (define-syntax-rule (eval-clj t)
   (apply-reduction-relation* -->v (term (injclj t))))
-;
-;(define-syntax-rule (eval-cljspec t)
-;  (apply-reduction-relation* -->vspec (term (injcljspec t))))
-;
-;(define-syntax-rule (eval-cljspec-hof t)
-;  (apply-reduction-relation* -->vspec-hof (term (injcljspec-hof t))))
-;
-;(define-syntax-rule (eval-cljspec-traces t)
-;  (traces -->vspec (term (injcljspec t))))
+(define-syntax-rule (eval-clj-traces t)
+  (traces -->v (term (injclj t))))
 
-;(test-equal (redex-match? Clojure M (term fact-5)) #t)
-;(test-equal (eval-clj true)
-;            '(true))
-;(test-equal (eval-clj (if (zero? 0) 0 1))
-;            '(0))
-;(test-equal (eval-clj (if (zero? 1) 0 1))
-;            '(1))
-;(test-equal (eval-clj ((fn [x] 5) 1))
-;            '(5))
-;(test-equal (eval-clj fact-5)
-;            '(120))
-;(test-equal (eval-clj (HashMap))
-;            '((HashMap)))
-;(test-equal (eval-clj (assoc (HashMap) 0 1))
-;            '((HashMap (0 1))))
-;(test-equal (eval-clj (get (assoc (HashMap) 0 1) 0 nil))
-;            '(1))
-;(test-equal (eval-clj (get (assoc (HashMap) 0 1) 1 nil))
-;            '(nil))
-;(test-equal (eval-clj (get (dissoc (assoc (HashMap) 0 1) 0) 0 nil))
-;            '(nil))
-;
-;(test-equal (eval-clj (def/fact 5))
-;            '(120))
-;(test-equal (eval-clj (error a))
-;            '((error a)))
-;(test-equal (eval-clj (if (error a) 0 1))
-;            '((error a)))
-;(test-equal (eval-clj (if 0 (error a) (error b)))
-;            '((error a)))
-;(test-equal (eval-clj (if nil (error a) (error b)))
-;            '((error b)))
-;(test-equal (eval-clj ((fn [x] (error a)) 1))
-;            '((error a)))
-;(test-equal (eval-clj ((fn [x] (error a)) (error b)))
-;            '((error b)))
-;(test-equal (eval-clj ((fn nme [x] (error a)) 1))
-;            '((error a)))
-;(test-equal (eval-clj ((fn nme [x] (error a)) (error b)))
-;            '((error b)))
-;(test-equal (eval-clj (zero? (error a)))
-;            '((error a)))
-;(test-equal (eval-clj (assoc 1 2 (error a)))
-;            '((error a)))
-;(test-equal (eval-clj (+ 2 (error a)))
-;            '((error a)))
-;
-;;;spec tests
-;(test-equal (eval-cljspec (+ 2 (error a)))
-;            '((error a)))
-;(test-equal (eval-cljspec (assert-spec 1 zero?))
-;            '((error spec-error)))
-;(test-equal (eval-cljspec (assert-spec 0 zero?))
-;            '(0))
-;(test-equal (eval-cljspec (assert-spec 0 number?))
-;            '(0))
-;(test-equal (eval-cljspec (assert-spec true number?))
-;            '((error spec-error)))
-;(test-equal (eval-cljspec (assert-spec true boolean?))
-;            '(true))
-;(test-equal (eval-cljspec (assert-spec false boolean?))
-;            '(false))
-;(test-equal (eval-cljspec (assert-spec 1 boolean?))
-;            '((error spec-error)))
-;
-;;spec-hof tests
+(define-syntax-rule (eval-cljspec t)
+  (apply-reduction-relation* -->vspec (term (injcljspec t))))
+
+(define-syntax-rule (eval-cljspec-hof t)
+  (apply-reduction-relation* -->vspec-hof (term (injcljspec-hof t))))
+
+(define-syntax-rule (eval-cljspec-traces t)
+  (traces -->vspec (term (injcljspec t))))
+
+(test-equal (redex-match? Clojure M (term fact-5)) #t)
+(test-equal (eval-clj true)
+            '(true))
+(test-equal (eval-clj (if (zero? 0) 0 1))
+            '(0))
+(test-equal (eval-clj (if (zero? 1) 0 1))
+            '(1))
+(test-equal (eval-clj ((fn [x] 5) 1))
+            '(5))
+(test-equal (eval-clj fact-5)
+            '(120))
+(test-equal (eval-clj (inc 1))
+            '(2))
+(test-equal (eval-clj (HashMap))
+            '((HashMap)))
+(test-equal (eval-clj (assoc (HashMap) 0 1))
+            '((HashMap (0 1))))
+(test-equal (eval-clj (get (assoc (HashMap) 0 1) 0 nil))
+            '(1))
+(test-equal (eval-clj (get (assoc (HashMap) 0 1) 1 nil))
+            '(nil))
+(test-equal (eval-clj (get (dissoc (assoc (HashMap) 0 1) 0) 0 nil))
+            '(nil))
+
+(test-equal (eval-clj (def/fact 5))
+            '(120))
+(test-equal (eval-clj (error a))
+            '((error a)))
+(test-equal (eval-clj (if (error a) 0 1))
+            '((error a)))
+(test-equal (eval-clj (if 0 (error a) (error b)))
+            '((error a)))
+(test-equal (eval-clj (if nil (error a) (error b)))
+            '((error b)))
+(test-equal (eval-clj ((fn [x] (error a)) 1))
+            '((error a)))
+(test-equal (eval-clj ((fn [x] (error a)) (error b)))
+            '((error b)))
+(test-equal (eval-clj ((fn nme [x] (error a)) 1))
+            '((error a)))
+(test-equal (eval-clj ((fn nme [x] (error a)) (error b)))
+            '((error b)))
+(test-equal (eval-clj ((fn [x y] (error a)) (error c) (error b)))
+            '((error c)))
+(test-equal (eval-clj ((fn nme [x y] (error a)) (error c) (error b)))
+            '((error c)))
+(test-equal (eval-clj (zero? (error a)))
+            '((error a)))
+(test-equal (eval-clj (assoc 1 2 (error a)))
+            '((error a)))
+(test-equal (eval-clj (+ 2 (error a)))
+            '((error a)))
+
+
+;;spec tests
+(test-equal (eval-cljspec 2)
+            '(2))
+(test-equal (eval-cljspec (+ 2 2))
+            '(4))
+(test-equal (eval-cljspec (+ 2 (error a)))
+            '((error a)))
+(test-equal (eval-cljspec (assert-spec 1 zero?))
+            '((error spec-error)))
+(test-equal (eval-cljspec (assert-spec 0 zero?))
+            '(0))
+(test-equal (eval-cljspec (assert-spec 0 number?))
+            '(0))
+(test-equal (eval-cljspec (assert-spec true number?))
+            '((error spec-error)))
+(test-equal (eval-cljspec (assert-spec true boolean?))
+            '(true))
+(test-equal (eval-cljspec (assert-spec false boolean?))
+            '(false))
+(test-equal (eval-cljspec (assert-spec 1 boolean?))
+            '((error spec-error)))
+
+;spec-hof tests
 ;(test-equal (eval-cljspec-hof (do 1 2))
 ;            '(2))
 ;(test-equal (eval-cljspec-hof (assert-spec (((fn (x) x) (rho)) (gen-spec number?))))
