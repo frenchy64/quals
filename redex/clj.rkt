@@ -183,16 +183,19 @@
 
 (define-extended-language ClojureSpec Clojure
   (FS ::= (DefFSpec (SP ...) SP))
-  (SP ::= L O1)
+  (SP ::= O1)
   (C ::= .... (assert-spec C SP) (gen-spec SP))
   (CNST ::= .... (gen-spec SP))
   ;; serious expressions
   (S ::= ....
+     ;; ((gen-spec SP) ρ) is here because of the above CNST extension
      ((assert-spec M SP) ρ)
      (assert-spec C SP))
   ;; frame
   (F ::= .... (assert-spec [] SP))
-  (M ::= .... (assert-spec M SP)))
+  (M ::= ....
+     ;; (CNST ρ) is already here
+     (assert-spec M SP)))
 
 (define-extended-language ClojureSpecHOF ClojureSpec
   (SP ::= .... (FSpec (SP ...) SP) (FSpec (SP ...) SP natural)))
@@ -233,7 +236,7 @@
         (gen-spec*-hof SP_r))
     (rho))])
 
-(define-syntax-rule (vρ-spec/gen-spec lang gen-spec* . args)
+(define-syntax-rule (vρ-spec/gen-spec lang gspec* . args)
   (...
    (extend-reduction-relation
     vρ lang #:domain C
@@ -242,7 +245,7 @@
     (--> ((assert-spec M SP) ρ) (assert-spec (M ρ) SP) ρ-assert-spec)
 
     ;; GenSpec
-    (--> (gen-spec SP) (gen-spec* SP) gen-spec)
+    (--> (gen-spec SP) (gspec* SP) gen-spec)
    
     ;; AssertSpec
     (--> (assert-spec ((fn [X ...] M) ρ)
@@ -266,17 +269,14 @@
           ρ)
          assert-rec-deffspec)
 
-    (--> (assert-spec NONERRV (fn [x] M))
-         (if ((fn [x] M) NONERRV)
-             NONERRV
-             (error spec-error))
-         assert-fn)
-   
     (--> (assert-spec NONERRV O1)
-         (if (O1 NONERRV)
-             NONERRV
-             (error spec-error))
-         assert-O1)
+         (((fn [x]
+               (if (O1 x)
+                   x
+                   (error spec-error)))
+           (rho))
+          NONERRV)
+         assert-spec-O1)
     .
     args)))
   
@@ -284,30 +284,36 @@
 (define vρ-spec
   (vρ-spec/gen-spec ClojureSpec gen-spec*))
 
+(define-syntax-rule (-->vspec/multi vρ-spec lang . args)
+  (...
+   (-->v/multi
+    vρ-spec lang
+    ;; Eval
+    (--> ((assert-spec S SP) (frames F ...))
+         (S (frames (assert-spec [] SP) F ...))
+         ev-assert-spec)
+
+    ;; Continue
+    (--> (NONERRV (frames (assert-spec [] SP) F ...))
+         ((assert-spec NONERRV SP) (frames F ...))
+         co-assert-spec)
+    . args)))
+
 (define -->vspec
-  (-->v/multi
-   vρ-spec ClojureSpec
-   ;; Eval
-   (--> ((assert-spec S SP) (frames F ...))
-        (S (frames (assert-spec [] SP) F ...)))
-
-   ;; Continue
-   (--> (NONERRV (frames (assert-spec [] SP) F ...))
-        ((assert-spec NONERRV SP) (frames F ...)))))
-
+  (-->vspec/multi vρ-spec ClojureSpec))
 (define vρ-spec-hof
-  (vρ-spec/gen-spec ClojureSpec gen-spec*-hof
+  (vρ-spec/gen-spec ClojureSpecHOF gen-spec*-hof
 
    ; prepare FSpec gen-count
-   (--> (assert-spec ((fn [X ...] M) ρ)
+   (--> (assert-spec (name f ((fn [X ...] M) ρ))
                      (FSpec (SP_a ...) SP_r))
-        (assert-spec ((fn [X ...] M) ρ)
+        (assert-spec f
                      (FSpec (SP_a ...) SP_r ,ngenerations))
         assert-fspec-init-gen-count)
 
-   (--> (assert-spec ((fn [X ...] M) ρ)
+   (--> (assert-spec (name f ((fn [X ...] M) ρ))
                      (FSpec (SP_a ...) SP_r 0))
-        ((fn [X ...] M) ρ)
+        f
         assert-fspec-stop)
  
    (--> (assert-spec (name f ((fn [X ...] M) ρ))
@@ -322,7 +328,7 @@
         assert-fspec-gen)))
 
 (define -->vspec-hof
-  (-->v/multi vρ-spec-hof ClojureSpecHOF))
+  (-->vspec/multi vρ-spec-hof ClojureSpecHOF))
 
 (define-syntax-rule (clj/def defname name args body)
   (define-term defname
@@ -348,7 +354,8 @@
 
 (define-syntax-rule (eval-cljspec t)
   (apply-reduction-relation* -->vspec (term (injcljspec t))))
-
+(define-syntax-rule (eval-cljspec-no-inject t)
+  (apply-reduction-relation* -->vspec (term t)))
 
 (define-syntax-rule (eval-cljspec-hof t)
   (apply-reduction-relation* -->vspec-hof (term (injcljspec-hof t))))
@@ -362,6 +369,29 @@
   (traces -->vspec-hof (term (injcljspec-hof t))))
 
 (test-equal (redex-match? Clojure M (term fact-5)) #t)
+(test-equal (redex-match? ClojureSpecHOF C
+                          (term (assert-spec
+                                 ((y (gen-spec number?))
+                                  (rho (y ((fn (x) x) (rho)))))
+                                 zero?)))
+            #t)
+(test-equal (redex-match? ClojureSpecHOF S
+                          (term ((y (gen-spec number?))
+                                  (rho (y ((fn (x) x) (rho)))))))
+            #t)
+(test-equal (redex-match? ClojureSpecHOF ((assert-spec S SP) (frames F ...))
+                          (term ((assert-spec
+                                  ((y (gen-spec number?)) (rho (y ((fn (x) x) (rho)))))
+                                  zero?)
+                                 (frames
+                                  (((fn
+                                     (do3460218)
+                                     (assert-spec y (FSpec (number?) zero? 9)))
+                                    (rho (y ((fn (x) x) (rho)))))
+                                   ())))))
+            #t)
+
+
 (test-equal (eval-clj true)
             '(true))
 (test-equal (eval-clj (if (zero? 0) 0 1))
@@ -460,8 +490,23 @@
                             (eval-cljspec-hof ((gen-spec (FSpec (number?) number?)) 1)))
             #t)
 ;; TODO check arguments of generated fn's
-(test-equal (eval-cljspec-hof ((gen-spec (FSpec (number?) number?)) nil))
+#;(test-equal (eval-cljspec-hof ((gen-spec (FSpec (number?) number?)) nil))
             '((error spec-error)))
 
-#;(test-equal (eval-cljspec-hof (assert-spec (fn [x] x) (FSpec (number?) zero?)))
+(test-equal (eval-cljspec-hof (assert-spec (fn [x] x) (FSpec (zero?) zero?)))
             '(((fn [x] x) (rho))))
+(test-equal (eval-cljspec-hof (assert-spec (fn [x] x) (FSpec (number?) zero?)))
+            '((error spec-error)))
+(test-equal (eval-cljspec-hof (assert-spec (fn [x] x) (FSpec (zero?) number?)))
+            '(((fn [x] x) (rho))))
+
+(test-equal (eval-cljspec-no-inject ((assert-spec
+                                      (1 (rho))
+                                      number?)
+                                     (frames)))
+            '(1))
+(test-equal (eval-cljspec-hof-no-inject ((assert-spec
+                                          (1 (rho))
+                                          number?)
+                                         (frames)))
+            '(1))
