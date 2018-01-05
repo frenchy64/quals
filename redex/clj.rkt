@@ -9,7 +9,7 @@
 
 (define-language Clojure
   ; simple expressions that throw away their closures
-  (CNST :: = X N O B NIL (HashMap) ERR)
+  (CNST ::= X N O B NIL (HashMap) ERR)
   ;; expressions
   (M ::=
      CNST L LN
@@ -19,8 +19,10 @@
   (ERR ::= (error any any ...))
   (L ::= (fn [X ...] M))
   (LN ::= (fn X [X ...] M))
+  (FNVALUE ::= O (L ρ) (LN ρ))
+  (NONFNVALUE ::=  B H NIL N)
   ; non-error values
-  (NONERRV ::= N O (L ρ) (LN ρ) B H NIL)
+  (NONERRV ::= FNVALUE NONFNVALUE)
   (V ::= NONERRV ERR)
   (H ::= (HashMap (NONERRV NONERRV) ...))
   (B ::= true false)
@@ -128,7 +130,9 @@
    (--> (X ρ) (error unknown-variable X)
         (side-condition (not (judgment-holds (lookup ρ X any))))
         x-error)
-  
+
+   (--> (NONFNVALUE V ...) (error bad-application)
+        β-non-function)
    (--> (((fn [X ...] M) ρ) V ...)
         (M (ext ρ (X V) ...))
         (judgment-holds (unique (X ...)))
@@ -344,15 +348,17 @@
   (vρ-spec/gen-spec ClojureSpecHOF gen-spec*-hof
 
    ; prepare FSpec gen-count
-   (--> (assert-spec (name f ((fn [X ...] M) ρ))
+   (--> (assert-spec V
                      (FSpec (SP_a ...) SP_r))
-        (assert-spec f
+        (assert-spec V
                      (FSpec (SP_a ...) SP_r ,ngenerations))
         assert-fspec-init-gen-count)
 
    (--> (assert-spec (name f ((fn [X ...] M) ρ))
                      (FSpec (SP_a ...) SP_r 0))
         f
+        (side-condition (equal? (length (term (X ...)))
+                                (length (term (SP_a ...)))))
         assert-fspec-stop)
  
    (--> (assert-spec (name f ((fn [X ...] M) ρ))
@@ -364,7 +370,25 @@
           (rho))
          f)
         (side-condition (< 0 (term natural)))
-        assert-fspec-gen)))
+        (side-condition (equal? (length (term (X ...)))
+                                (length (term (SP_a ...)))))
+        assert-fspec-gen)
+   (--> (assert-spec ((fn [X ...] M) ρ)
+                     (FSpec (SP_a ...) SP_r natural))
+        (error spec-error
+               ,(string-append
+                 "Spec expected a function with " (~a (length (term (SP_a ...))))
+                 " parameters, but found " (~a (length (term (X ...))))))
+        (side-condition (not (equal? (length (term (X ...)))
+                                     (length (term (SP_a ...))))))
+        assert-fspec-gen-arg-mismatch)
+
+   (--> (assert-spec NONFNVALUE
+                     (FSpec (SP_a ...) SP_r natural))
+        (error spec-error
+               ,(string-append
+                 "Spec expected a function but found " (~a (term NONFNVALUE))))
+        assert-fspec-non-function)))
 
 (define -->vspec-hof
   (-->vspec/multi vρ-spec-hof ClojureSpecHOF))
@@ -388,11 +412,14 @@
 
 (define-syntax-rule (eval-clj t)
   (apply-reduction-relation* -->v (term (injclj t))))
+(define-syntax-rule (eval-clj-no-inject t)
+  (apply-reduction-relation* -->v (term t)))
 (define-syntax-rule (eval-clj-traces t)
   (traces -->v (term (injclj t))))
 
 (define-syntax-rule (eval-cljspec t)
   (apply-reduction-relation* -->vspec (term (injcljspec t))))
+
 (define-syntax-rule (eval-cljspec-no-inject t)
   (apply-reduction-relation* -->vspec (term t)))
 
@@ -586,13 +613,76 @@
                                          (frames)))
             '(1))
 
-(define (check-Clojure-ClojureSpec-compat)
-  (for/list ([i (in-range 10)]
-             [j (in-range 5)])
-    (let* ([ct (generate-term Clojure M #:i-th (* 200 i))]
-           [sp (generate-term ClojureSpec SP #:i-th (+ i j))]
-           [eclj (eval-clj ,ct)]
-           [ecljspec (~a (eval-cljspec (assert-spec ,ct ,sp)))])
-      (displayln (string-append
-                  (~a eclj)
-                  (~a ecljspec))))))
+(test-equal (eval-clj (1 2))
+            '((error bad-application)))
+; ifn? test for functions
+(test-equal (singleton-spec-error? (eval-cljspec-hof (assert-spec 1 (FSpec () number?))))
+            #t)
+; mismatch between FSpec arg count and actual count
+(test-equal (singleton-spec-error? (eval-cljspec-hof (assert-spec (fn [x] x) (FSpec () number?))))
+            #t)
+
+(define-syntax-rule (check-compatible-result speclang orig-clj orig-cljspec eclj ecljspec)
+  (...
+   (begin
+    (unless (redex-match? Clojure V eclj)
+      (error "Clojure evaluation did not fully reduce"
+             'original-form
+             orig-clj
+             'stuck-form
+             eclj))
+    (unless (redex-match? speclang V ecljspec)
+      (error (string-append
+              "ClojureSpec evaluation did not fully reduce\n"
+              "Original-form: " (~a orig-cljspec) "\n"
+              
+              "Stuck-form: " (~a ecljspec))))
+    (cond
+      ;; exactly the same output
+      [(equal? eclj ecljspec) #t]
+      ;; throws a spec error
+      [(redex-match? speclang (error spec-error any ...) ecljspec) #t]
+      ;; throws a different kind of error than Clojure
+      [(and (redex-match? Clojure ERR eclj)
+            (redex-match? speclang ERR ecljspec)) #t]
+      ;; spec throws a non-spec error where Clojure returns a value
+      [else (error (string-append
+                    "ClojureSpec evaluation returned a different value than Clojure\n"
+                    "Original-clj: " (~a orig-clj)
+                   "\nOriginal-clj-spec: " (~a orig-cljspec)
+                   "\nclj-value: " (~a eclj)
+                   "\ncljspec-value: " (~a ecljspec)))]))))
+
+
+(define-syntax-rule (check-Clojure-ClojureSpec-compat* speclang eval-cljspec nforms nspecs)
+  (begin
+    (for/list ([i (in-range nforms)]
+               [j (in-range nspecs)])
+      (let* ([ct (generate-term Clojure M #:i-th (* 200 i))]
+             [sp (generate-term speclang SP #:i-th (+ i j))]
+             [orig-clj ct]
+             [orig-cljspec (term (assert-spec ,ct ,sp))]
+             [esclj (eval-clj ,orig-clj)]
+             [escljspec (eval-cljspec ,orig-cljspec)]
+             [eclj (if (equal? 1 (length esclj))
+                       (first esclj)
+                       (error "Multiple results from Clojure eval"
+                              esclj))]
+             [ecljspec (if (equal? 1 (length escljspec))
+                           (first escljspec)
+                           (error "Multiple results from ClojureSpec eval"
+                                  escljspec))])
+        (check-compatible-result
+         speclang
+         orig-clj
+         orig-cljspec
+         eclj
+         ecljspec)))
+    #f))
+
+(define (check-Clojure-ClojureSpec-compat nforms nspecs)
+  (check-Clojure-ClojureSpec-compat* ClojureSpec eval-cljspec nforms nspecs))
+
+#; (check-Clojure-ClojureSpecHOF-compat 1000 1000)
+(define (check-Clojure-ClojureSpecHOF-compat nforms nspecs)
+  (check-Clojure-ClojureSpec-compat* ClojureSpecHOF eval-cljspec-hof nforms nspecs))
