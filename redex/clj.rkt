@@ -84,7 +84,6 @@
         (cadr e)
         V_d)))
 
-
 (define-judgment-form Clojure
   #:mode (δ I O)
   #:contract (δ (O V ...) V)
@@ -370,6 +369,17 @@
          f)
         (side-condition (< 0 (term natural)))
         assert-fspec-gen)
+
+   (--> (assert-spec (name f ((fn nme [X ...] M) ρ))
+                     (FSpec (SP_a ...) SP_r natural))
+        (((fn [y]
+              ((fn [,(gensym 'do)]
+                   (assert-spec y (FSpec (SP_a ...) SP_r ,(sub1 (term natural)))))
+               (assert-spec (y (gen-spec SP_a) ...) SP_r)))
+          (rho))
+         f)
+        (side-condition (< 0 (term natural)))
+        assert-rec-fspec-gen)
 
    (--> (assert-spec NONFNVALUE
                      (FSpec (SP_a ...) SP_r natural))
