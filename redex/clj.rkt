@@ -694,3 +694,8 @@
 #; (check-Clojure-ClojureSpecHOF-compat 1000 1000)
 (define (check-Clojure-ClojureSpecHOF-compat nforms nspecs)
   (check-Clojure-ClojureSpec-compat* ClojureSpecHOF eval-cljspec-hof nforms nspecs))
+
+(test-equal (eval-cljspec-hof (assert-spec (fn [x] (if (zero? x) nil (error missiles-launched)))
+                                           (FSpec (number?) nil?)))
+            '((error missiles-launched)))
+
