@@ -1,6 +1,11 @@
 #lang racket
 
 (require redex)
+(require racket/random)
+
+;; for generators
+(caching-enabled? #f)
+
 (define-language Clojure
   ; simple expressions that throw away their closures
   (CNST :: = X N O B NIL (HashMap) ERR)
@@ -21,7 +26,7 @@
   (NIL ::= nil)
   (N ::= number)
   (O ::= O1 O2 O3)
-  (O1 ::= inc dec zero? number? boolean?)
+  (O1 ::= inc dec zero? number? boolean? nil?)
   (O2 ::= + * dissoc)
   (O3 ::= assoc get)
   (ρ ::= (rho (X NONERRV) ...))
@@ -90,6 +95,9 @@
                               (equal? 'false (term any)))
                           (term true)
                           (term false)))]
+  [(δ (nil? any) ,(if (equal? 'nil (term any))
+                      (term true)
+                      (term false)))]
   [(δ (dec N) ,(sub1 (term N)))]
   [(δ (inc N) ,(add1 (term N)))]
   [(δ (zero? N) ,(if (zero? (term N))
@@ -175,16 +183,19 @@
 
 (define-extended-language ClojureSpec Clojure
   (FS ::= (DefFSpec (SP ...) SP))
-  (SP  ::= L O1)
-  (C ::= .... (assert-spec C SP))
+  (SP ::= L O1)
+  (C ::= .... (assert-spec C SP) (gen-spec SP))
+  (CNST ::= .... (gen-spec SP))
   ;; serious expressions
-  (S ::= .... (assert-spec C SP))
+  (S ::= ....
+     ((assert-spec M SP) ρ)
+     (assert-spec C SP))
   ;; frame
   (F ::= .... (assert-spec [] SP))
-  (M ::= .... (gen-spec SP) (assert-spec M SP)))
+  (M ::= .... (assert-spec M SP)))
 
 (define-extended-language ClojureSpecHOF ClojureSpec
-  (SP ::= .... (FSpec (SP ...) SP) (FSpec (SP ...) SP N)))
+  (SP ::= .... (FSpec (SP ...) SP) (FSpec (SP ...) SP natural)))
 
 (define-metafunction ClojureSpec
   injcljspec : M -> ς
@@ -194,56 +205,84 @@
   injcljspec-hof : M -> ς
   [(injcljspec-hof M) ((M (rho)) (frames))])
 
-(define-metafunction ClojureSpecHOF
-  do : M M -> M
-  [(do M_1 M_2) ((fn [,(gensym 'x)]
-                     M_2)
-                 M_1)])
-
 (define ngenerations 10)
+(define min-random-int -2000)
+(define max-random-int 2000)
 
+(define (random-int)
+  (random min-random-int max-random-int))
 
+;; not defined in ClojureSpecHOF because we cannot
+;; generate FSpec's (yet)
+(define-syntax-rule (define-gen-spec*-ext lang name . args)
+  (...
+   (define-metafunction lang
+     name : SP -> V
+     [(name number?) ,(random-int)]
+     [(name zero?) 0]
+     [(name boolean?) ,(random-ref '(true false))]
+     [(name nil?) nil]
+     . args)))
+
+(define-gen-spec*-ext ClojureSpec gen-spec*)
+(define-gen-spec*-ext ClojureSpecHOF gen-spec*-hof
+  [(gen-spec*-hof (FSpec (SP_a ...) SP_r))
+   ((fn ,(map (lambda (i) (string->symbol (string-append "x" (number->string i))))
+              (range (length (term (SP_a ...)))))
+        ;; TODO check arg specs
+        (gen-spec*-hof SP_r))
+    (rho))])
+
+(define-syntax-rule (vρ-spec/gen-spec lang gen-spec* . args)
+  (...
+   (extend-reduction-relation
+    vρ lang #:domain C
+   
+    (--> ((gen-spec SP) ρ) (gen-spec SP) ρ-gen-spec)
+    (--> ((assert-spec M SP) ρ) (assert-spec (M ρ) SP) ρ-assert-spec)
+
+    ;; GenSpec
+    (--> (gen-spec SP) (gen-spec* SP) gen-spec)
+   
+    ;; AssertSpec
+    (--> (assert-spec ((fn [X ...] M) ρ)
+                      (DefFSpec (SP_a ...) SP_r))
+         ((fn [X ...]
+              (assert-spec
+               ((fn [X ...] M)
+                (assert-spec X SP_a) ...)
+               SP_r))
+          ρ)
+         assert-deffspec)
+    ;; Treat recursive functions checked with DefFSpec
+    ;; as top level mutable vars, so we spec recursive calls
+    (--> (assert-spec ((fn X_n [X ...] M) ρ)
+                      (DefFSpec (SP_a ...) SP_r))
+         ((fn X_n [X ...]
+              (assert-spec
+               ((fn [X ...] M)
+                (assert-spec X SP_a) ...)
+               SP_r))
+          ρ)
+         assert-rec-deffspec)
+
+    (--> (assert-spec NONERRV (fn [x] M))
+         (if ((fn [x] M) NONERRV)
+             NONERRV
+             (error spec-error))
+         assert-fn)
+   
+    (--> (assert-spec NONERRV O1)
+         (if (O1 NONERRV)
+             NONERRV
+             (error spec-error))
+         assert-O1)
+    .
+    args)))
+  
 
 (define vρ-spec
-  (extend-reduction-relation
-   vρ ClojureSpec #:domain C
-   
-   (--> ((gen-spec SP) ρ) (gen-spec SP) ρ-gen-spec)
-   (--> ((assert-spec M SP) ρ) (assert-spec (M ρ) SP) ρ-assert-spec)
-  
-   ;; AssertSpec
-   (--> (assert-spec ((fn [X ...] M) ρ)
-                     (DefFSpec (SP_a ...) SP_r))
-        ((fn [X ...]
-             (assert-spec
-              ((fn [X ...] M)
-               (assert-spec X SP_a) ...)
-              SP_r))
-         ρ)
-        assert-deffspec)
-   ;; Treat recursive functions checked with DefFSpec
-   ;; as top level mutable vars, so we spec recursive calls
-   (--> (assert-spec ((fn X_n [X ...] M) ρ)
-                     (DefFSpec (SP_a ...) SP_r))
-        ((fn X_n [X ...]
-             (assert-spec
-              ((fn [X ...] M)
-               (assert-spec X SP_a) ...)
-              SP_r))
-         ρ)
-        assert-rec-deffspec)
-
-   (--> (assert-spec NONERRV (fn [x] M))
-        (if ((fn [x] M) NONERRV)
-            NONERRV
-            (error spec-error))
-        assert-fn)
-   
-   (--> (assert-spec NONERRV O1)
-        (if (O1 NONERRV)
-            NONERRV
-            (error spec-error))
-        assert-O1)))
+  (vρ-spec/gen-spec ClojureSpec gen-spec*))
 
 (define -->vspec
   (-->v/multi
@@ -257,8 +296,7 @@
         ((assert-spec NONERRV SP) (frames F ...)))))
 
 (define vρ-spec-hof
-  (extend-reduction-relation
-   vρ-spec ClojureSpecHOF #:domain C
+  (vρ-spec/gen-spec ClojureSpec gen-spec*-hof
 
    ; prepare FSpec gen-count
    (--> (assert-spec ((fn [X ...] M) ρ)
@@ -272,16 +310,15 @@
         ((fn [X ...] M) ρ)
         assert-fspec-stop)
  
-   (--> (assert-spec ((fn [X ...] M) ρ)
-                     (FSpec (SP_a ...) SP_r N))
+   (--> (assert-spec (name f ((fn [X ...] M) ρ))
+                     (FSpec (SP_a ...) SP_r natural))
         (((fn [y]
-              (do (assert-spec
-                   (y (gen-spec SP_a) ...)
-                   SP_r)
-                (assert-spec y (FSpec (SP_a ...) SP_r ,(sub1 (term N))))))
+              ((fn [,(gensym 'do)]
+                   (assert-spec y (FSpec (SP_a ...) SP_r ,(sub1 (term natural)))))
+               (assert-spec (y (gen-spec SP_a) ...) SP_r)))
           (rho))
-         ((fn [X ...] M) ρ))
-        (side-condition (< 0 (term N)))
+         f)
+        (side-condition (< 0 (term natural)))
         assert-fspec-gen)))
 
 (define -->vspec-hof
@@ -312,11 +349,17 @@
 (define-syntax-rule (eval-cljspec t)
   (apply-reduction-relation* -->vspec (term (injcljspec t))))
 
+
 (define-syntax-rule (eval-cljspec-hof t)
   (apply-reduction-relation* -->vspec-hof (term (injcljspec-hof t))))
+(define-syntax-rule (eval-cljspec-hof-no-inject t)
+  (apply-reduction-relation* -->vspec-hof (term t)))
 
 (define-syntax-rule (eval-cljspec-traces t)
   (traces -->vspec (term (injcljspec t))))
+
+(define-syntax-rule (eval-cljspec-hof-traces t)
+  (traces -->vspec-hof (term (injcljspec-hof t))))
 
 (test-equal (redex-match? Clojure M (term fact-5)) #t)
 (test-equal (eval-clj true)
@@ -394,10 +437,31 @@
 (test-equal (eval-cljspec (assert-spec 1 boolean?))
             '((error spec-error)))
 
+(define (singleton-pred p l)
+  (and (not (empty? l))
+       (empty? (cdr l))
+       (p (car l))))
+
 ;spec-hof tests
-;(test-equal (eval-cljspec-hof (do 1 2))
-;            '(2))
-;(test-equal (eval-cljspec-hof (assert-spec (((fn (x) x) (rho)) (gen-spec number?))))
-;            '(0))
-;(test-equal (eval-cljspec-hof (assert-spec (fn [x] x) (FSpec (number?) zero?)))
-;            '(0))
+(test-equal (singleton-pred number? (eval-cljspec-hof (gen-spec number?)))
+            #t)
+(test-equal (singleton-pred (lambda (x) (or (equal? 'true x)
+                                            (equal? 'false x)))
+                            (eval-cljspec-hof (gen-spec boolean?)))
+            #t)
+(test-equal (singleton-pred zero?
+                            (eval-cljspec-hof (gen-spec zero?)))
+            #t)
+
+(test-equal (singleton-pred number?
+                            (eval-cljspec-hof ((gen-spec (FSpec () number?)))))
+            #t)
+(test-equal (singleton-pred number?
+                            (eval-cljspec-hof ((gen-spec (FSpec (number?) number?)) 1)))
+            #t)
+;; TODO check arguments of generated fn's
+(test-equal (eval-cljspec-hof ((gen-spec (FSpec (number?) number?)) nil))
+            '((error spec-error)))
+
+#;(test-equal (eval-cljspec-hof (assert-spec (fn [x] x) (FSpec (number?) zero?)))
+            '(((fn [x] x) (rho))))
