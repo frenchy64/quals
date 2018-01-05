@@ -3,6 +3,7 @@
 (require redex)
 (require racket/random)
 (require racket/format)
+(require test-engine/racket-tests)
 
 ;; for generators
 (caching-enabled? #f)
@@ -357,8 +358,6 @@
    (--> (assert-spec (name f ((fn [X ...] M) ρ))
                      (FSpec (SP_a ...) SP_r 0))
         f
-        (side-condition (equal? (length (term (X ...)))
-                                (length (term (SP_a ...)))))
         assert-fspec-stop)
  
    (--> (assert-spec (name f ((fn [X ...] M) ρ))
@@ -370,18 +369,7 @@
           (rho))
          f)
         (side-condition (< 0 (term natural)))
-        (side-condition (equal? (length (term (X ...)))
-                                (length (term (SP_a ...)))))
         assert-fspec-gen)
-   (--> (assert-spec ((fn [X ...] M) ρ)
-                     (FSpec (SP_a ...) SP_r natural))
-        (error spec-error
-               ,(string-append
-                 "Spec expected a function with " (~a (length (term (SP_a ...))))
-                 " parameters, but found " (~a (length (term (X ...))))))
-        (side-condition (not (equal? (length (term (X ...)))
-                                     (length (term (SP_a ...))))))
-        assert-fspec-gen-arg-mismatch)
 
    (--> (assert-spec NONFNVALUE
                      (FSpec (SP_a ...) SP_r natural))
@@ -619,7 +607,10 @@
 (test-equal (singleton-spec-error? (eval-cljspec-hof (assert-spec 1 (FSpec () number?))))
             #t)
 ; mismatch between FSpec arg count and actual count
-(test-equal (singleton-spec-error? (eval-cljspec-hof (assert-spec (fn [x] x) (FSpec () number?))))
+;; removed `assert-fspec-gen-arg-mismatch`, so not a relevant test
+#;(test-equal (singleton-spec-error? (eval-cljspec-hof (assert-spec (fn [x] x) (FSpec () number?))))
+            #t)
+(test-equal (singleton-arg-mismatch-error? (eval-cljspec-hof (assert-spec (fn [x] x) (FSpec () number?))))
             #t)
 
 (define-syntax-rule (check-compatible-result speclang orig-clj orig-cljspec eclj ecljspec)
@@ -653,6 +644,13 @@
                    "\nclj-value: " (~a eclj)
                    "\ncljspec-value: " (~a ecljspec)))]))))
 
+;; check that errors are actually caught and thrown
+(check-error
+ (check-compatible-result ClojureSpecHOF
+                          (term (fn () 1))
+                          (term (assert-spec (fn () 1) (FSpec (number?) zero?)))
+                          '((fn () 1) (rho))
+                          '(error argument-mismatch "Expected 0 arguments, but found 1" "Form: ((fn () 1) 1771)")))
 
 (define-syntax-rule (check-Clojure-ClojureSpec-compat* speclang eval-cljspec nforms nspecs)
   (begin
