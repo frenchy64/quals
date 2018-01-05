@@ -15,7 +15,7 @@
      (M M ...)
      (if M M M))
   (X ::= variable-not-otherwise-mentioned)
-  (ERR ::= (error any))
+  (ERR ::= (error any any ...))
   (L ::= (fn [X ...] M))
   (LN ::= (fn X [X ...] M))
   ; non-error values
@@ -472,6 +472,12 @@
        (empty? (cdr l))
        (p (car l))))
 
+(define (singleton-error? l)
+  (singleton-pred (lambda (x)
+                    (and (list? x)
+                         (not (empty? x))
+                         (equal? 'error (car x))))
+                  l))
 ;spec-hof tests
 (test-equal (singleton-pred number? (eval-cljspec-hof (gen-spec number?)))
             #t)
@@ -495,8 +501,9 @@
 
 (test-equal (eval-cljspec-hof (assert-spec (fn [x] x) (FSpec (zero?) zero?)))
             '(((fn [x] x) (rho))))
-(test-equal (eval-cljspec-hof (assert-spec (fn [x] x) (FSpec (number?) zero?)))
-            '((error spec-error)))
+(test-equal (singleton-error?
+             (eval-cljspec-hof (assert-spec (fn [x] x) (FSpec (number?) zero?))))
+            #t)
 (test-equal (eval-cljspec-hof (assert-spec (fn [x] x) (FSpec (zero?) number?)))
             '(((fn [x] x) (rho))))
 
