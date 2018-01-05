@@ -2,6 +2,7 @@
 
 (require redex)
 (require racket/random)
+(require racket/format)
 
 ;; for generators
 (caching-enabled? #f)
@@ -26,7 +27,8 @@
   (NIL ::= nil)
   (N ::= number)
   (O ::= O1 O2 O3)
-  (O1 ::= inc dec zero? number? boolean? nil?)
+  (P? ::= zero? number? boolean? nil?)
+  (O1 ::= inc dec P?)
   (O2 ::= + * dissoc)
   (O3 ::= assoc get)
   (ρ ::= (rho (X NONERRV) ...))
@@ -123,16 +125,48 @@
    (--> (X ρ) V
         (judgment-holds (lookup ρ X V))
         ρ-x)
+   (--> (X ρ) (error unknown-variable X)
+        (side-condition (not (judgment-holds (lookup ρ X any))))
+        x-error)
   
    (--> (((fn [X ...] M) ρ) V ...)
         (M (ext ρ (X V) ...))
         (judgment-holds (unique (X ...)))
+        (side-condition (equal? (length (term (X ...)))
+                                (length (term (V ...)))))
         β)
+   (--> (((fn [X ...] M) ρ) V ...)
+        (error argument-mismatch
+               ,(string-append
+                 "Expected " (~a (length (term (X ...))))
+                 " arguments, but found "
+                 (~a (length (term (V ...)))))
+               ,(string-append
+                 "Form: " (~a (list* (term (fn [X ...] M))
+                                     (term (V ...))))))
+        (side-condition (not (equal? (length (term (X ...)))
+                                     (length (term (V ...))))))
+        β-mismatch)
 
    (--> ((name f ((fn X_f [X ...] M) ρ)) V ...)
         (M (ext ρ (X_f f) (X V) ...))
         (judgment-holds (unique (X ...)))
+        (side-condition (equal? (length (term (X ...)))
+                                (length (term (V ...)))))
         rec-β)
+
+   (--> ((name f ((fn X_f [X ...] M) ρ)) V ...)
+        (error argument-mismatch
+               ,(string-append
+                 "Expected " (~a (length (term (X ...))))
+                 " arguments, but found "
+                 (~a (length (term (V ...)))))
+               ,(string-append
+                 "Form: " (~a (list* (term (fn [X ...] M))
+                                     (term (V ...))))))
+        (side-condition (not (equal? (length (term (X ...)))
+                                     (length (term (V ...))))))
+        rec-β-mismatch)
   
    (--> (O V ...) V_1
         (judgment-holds (δ (O V ...) V_1))
@@ -183,7 +217,8 @@
 
 (define-extended-language ClojureSpec Clojure
   (FS ::= (DefFSpec (SP ...) SP))
-  (SP ::= O1)
+  ;TODO blame paths
+  (SP ::= P?)
   (C ::= .... (assert-spec C SP) (gen-spec SP))
   (CNST ::= .... (gen-spec SP))
   ;; serious expressions
@@ -269,14 +304,18 @@
           ρ)
          assert-rec-deffspec)
 
-    (--> (assert-spec NONERRV O1)
+    (--> (assert-spec NONERRV P?)
          (((fn [x]
-               (if (O1 x)
+               (if (P? x)
                    x
-                   (error spec-error)))
+                   (error spec-error
+                          ,(string-append
+                            "Spec violation: "
+                            "Expected spec " (~a (term P?))
+                            ", actual value " (~a (term NONERRV))))))
            (rho))
           NONERRV)
-         assert-spec-O1)
+         assert-spec-P?)
     .
     args)))
   
@@ -368,6 +407,30 @@
 (define-syntax-rule (eval-cljspec-hof-traces t)
   (traces -->vspec-hof (term (injcljspec-hof t))))
 
+
+(define (singleton-pred p l)
+  (and (not (empty? l))
+       (empty? (cdr l))
+       (p (car l))))
+
+(define (singleton-error? p l)
+  (singleton-pred (lambda (x)
+                    (and (list? x)
+                         (<= 2 (length x))
+                         (equal? 'error (first x))
+                         (p (second x))))
+                  l))
+
+(define (singleton-spec-error? l)
+  (singleton-error? (lambda (x) (equal? 'spec-error x))
+                    l))
+(define (singleton-arg-mismatch-error? l)
+  (singleton-error? (lambda (x) (equal? 'argument-mismatch x))
+                    l))
+(define (singleton-unknown-var-error? l)
+  (singleton-error? (lambda (x) (equal? 'unknown-variable x))
+                    l))
+
 (test-equal (redex-match? Clojure M (term fact-5)) #t)
 (test-equal (redex-match? ClojureSpecHOF C
                           (term (assert-spec
@@ -443,7 +506,22 @@
             '((error a)))
 (test-equal (eval-clj (+ 2 (error a)))
             '((error a)))
+(test-equal (singleton-arg-mismatch-error?
+             (eval-clj ((fn [] 1) 1)))
+            #t)
+(test-equal (singleton-arg-mismatch-error?
+             (eval-clj ((fn nme [] 1) 1)))
+            #t)
+(test-equal (singleton-arg-mismatch-error?
+             (eval-clj ((fn [x] 1))))
+            #t)
+(test-equal (singleton-arg-mismatch-error?
+             (eval-clj ((fn nme [x] 1))))
+            #t)
 
+(test-equal (singleton-unknown-var-error?
+             (eval-clj x))
+            #t)
 
 ;;spec tests
 (test-equal (eval-cljspec 2)
@@ -452,32 +530,22 @@
             '(4))
 (test-equal (eval-cljspec (+ 2 (error a)))
             '((error a)))
-(test-equal (eval-cljspec (assert-spec 1 zero?))
-            '((error spec-error)))
+(test-equal (singleton-spec-error? (eval-cljspec (assert-spec 1 zero?)))
+            #t)
 (test-equal (eval-cljspec (assert-spec 0 zero?))
             '(0))
 (test-equal (eval-cljspec (assert-spec 0 number?))
             '(0))
-(test-equal (eval-cljspec (assert-spec true number?))
-            '((error spec-error)))
+(test-equal (singleton-spec-error? (eval-cljspec (assert-spec true number?)))
+            #t)
 (test-equal (eval-cljspec (assert-spec true boolean?))
             '(true))
 (test-equal (eval-cljspec (assert-spec false boolean?))
             '(false))
-(test-equal (eval-cljspec (assert-spec 1 boolean?))
-            '((error spec-error)))
+(test-equal (singleton-spec-error? (eval-cljspec (assert-spec 1 boolean?)))
+            #t)
 
-(define (singleton-pred p l)
-  (and (not (empty? l))
-       (empty? (cdr l))
-       (p (car l))))
 
-(define (singleton-error? l)
-  (singleton-pred (lambda (x)
-                    (and (list? x)
-                         (not (empty? x))
-                         (equal? 'error (car x))))
-                  l))
 ;spec-hof tests
 (test-equal (singleton-pred number? (eval-cljspec-hof (gen-spec number?)))
             #t)
@@ -496,12 +564,12 @@
                             (eval-cljspec-hof ((gen-spec (FSpec (number?) number?)) 1)))
             #t)
 ;; TODO check arguments of generated fn's
-#;(test-equal (eval-cljspec-hof ((gen-spec (FSpec (number?) number?)) nil))
-            '((error spec-error)))
+#;(test-equal (singleton-spec-error? (eval-cljspec-hof ((gen-spec (FSpec (number?) number?)) nil)))
+               #t)
 
 (test-equal (eval-cljspec-hof (assert-spec (fn [x] x) (FSpec (zero?) zero?)))
             '(((fn [x] x) (rho))))
-(test-equal (singleton-error?
+(test-equal (singleton-spec-error?
              (eval-cljspec-hof (assert-spec (fn [x] x) (FSpec (number?) zero?))))
             #t)
 (test-equal (eval-cljspec-hof (assert-spec (fn [x] x) (FSpec (zero?) number?)))
@@ -517,3 +585,14 @@
                                           number?)
                                          (frames)))
             '(1))
+
+(define (check-Clojure-ClojureSpec-compat)
+  (for/list ([i (in-range 10)]
+             [j (in-range 5)])
+    (let* ([ct (generate-term Clojure M #:i-th (* 200 i))]
+           [sp (generate-term ClojureSpec SP #:i-th (+ i j))]
+           [eclj (eval-clj ,ct)]
+           [ecljspec (~a (eval-cljspec (assert-spec ,ct ,sp)))])
+      (displayln (string-append
+                  (~a eclj)
+                  (~a ecljspec))))))
