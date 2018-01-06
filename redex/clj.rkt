@@ -4,6 +4,7 @@
 (require racket/random)
 (require racket/format)
 (require test-engine/racket-tests)
+(require redex/pict)
 
 ;; for generators
 (caching-enabled? #f)
@@ -21,7 +22,7 @@
   (L ::= (fn [X ...] M))
   (LN ::= (fn X [X ...] M))
   (FNVALUE ::= O (L ρ) (LN ρ))
-  (NONFNVALUE ::=  B H NIL N)
+  (NONFNVALUE ::= B H NIL N)
   ; non-error values
   (NONERRV ::= FNVALUE NONFNVALUE)
   (V ::= NONERRV ERR)
@@ -695,7 +696,10 @@
 (define (check-Clojure-ClojureSpecHOF-compat nforms nspecs)
   (check-Clojure-ClojureSpec-compat* ClojureSpecHOF eval-cljspec-hof nforms nspecs))
 
+; the counter-example
 (test-equal (eval-cljspec-hof (assert-spec (fn [x] (if (zero? x) nil (error missiles-launched)))
                                            (FSpec (number?) nil?)))
             '((error missiles-launched)))
 
+(test-equal (eval-clj (fn [x] (if (zero? x) nil (error missiles-launched))))
+            '(((fn [x] (if (zero? x) nil (error missiles-launched))) ())))
