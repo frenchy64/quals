@@ -63,13 +63,11 @@ Increases the more values are reachable
 Reference:
 
 I = number of collected inference results
-U = maximum # of union members (unordered types)
+U = maximum number of union members (unordered types)
 D = maximum depth of types
 W = maximum width of non-union types (ordered types) (eg. HMap entries, function positions)
 
 \subsubsection*{Join}
-
-U = maximum # of union members
 
 \begin{verbatim}
 join(D, W, U) = O(D * max(W, U^2))
@@ -82,7 +80,8 @@ Joining two non-union types that are not the same sort of type is constant.
 Joining two non-union types that are the same sort of type joins
 each of the members of its types pairwise, of which the maximum number is $W$.
 
-A maximum number of $D$ recursive joins can occur.
+A maximum number of $D$ recursive joins can occur, and $max(W, U^2)$ work is done
+at each level, so time complexity is $O(D * max(W, U^2))$.
 
 \subsubsection*{Naive type environment creation}
 
@@ -91,16 +90,28 @@ A maximum number of $D$ recursive joins can occur.
 	 Naive algorithm traverses depth/width of type 
 
 \begin{verbatim}
-naive(I, D, W, U) = 
-O( I  // fold over all inference results
-	 * 
-	 (D  // traverse entire inference result path to build up a type
-		+
-		join(D, W, U)
-	 )
-	)
+naive(I, D, W, U) = O(I * (D + join(D, W, U)))
 \end{verbatim}
 
+Iterate over each inference result, there are $I$ of them.
+
+Build up a sparse type from the inference result, maximum depth $D$.
+
+Join this type with the existing type taking $join(D, W, U)$.
+
+Since we do $(D + join(D, W, U))$ work for each result, time complexity
+is $O(I * (D + join(D, W, U)))$.
+
+\subsubsection*{Naive type environment creation (optimized)}
+
+1. Build naive type environment (optimized)
+	Group inference results by path prefixes. Then join the groups
+	from the longest prefixes first, and use previous results to avoid
+	recalulating joins.
+
+\begin{verbatim}
+optimized(I, D, W, U) = O(I * (D + join(D, W, U)))
+\end{verbatim}
 
 \subsection*{Can space use be bounded by reducing traces as collected?}
 
