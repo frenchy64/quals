@@ -63,10 +63,12 @@ Increases the more values are reachable
 
 Reference:
 
-I = number of collected inference results
-U = maximum number of union members (unordered types)
-D = maximum depth of types
-W = maximum width of non-union types (ordered types) (eg. HMap entries, function positions)
+\begin{description}
+  \item [I] number of collected inference results
+  \item [U] maximum number of union members (unordered types)
+  \item [D] maximum depth of types
+  \item [W] maximum width of non-union types (ordered types) (eg. HMap entries, function positions)
+\end{description}
 
 \subsubsection*{Join}
 
@@ -87,8 +89,8 @@ at each level, so time complexity is $O(D * max(W, U^2))$.
 \subsubsection*{Naive type environment creation}
 
 1. Build naive type environment.
-	 Folds over inference results, `update' from the top of each type.
-	 Naive algorithm traverses depth/width of type 
+   Folds over inference results, `update' from the top of each type.
+   Naive algorithm traverses depth/width of type 
 
 \begin{verbatim}
 naive(I, D, W, U) = O(I * (D + join(D, W, U)))
@@ -106,9 +108,9 @@ is $O(I * (D + join(D, W, U)))$.
 \subsubsection*{Naive type environment creation (optimized)}
 
 1. Build naive type environment (optimized)
-	Group inference results by path prefixes. Then join the groups
-	from the longest prefixes first, and use previous results to avoid
-	recalulating joins.
+  Group inference results by path prefixes. Then join the groups
+  from the longest prefixes first, and use previous results to avoid
+  recalulating joins.
 
 \begin{verbatim}
 optimized(I, D, W, U) = O(I * (D + join(D, W, U)))
@@ -178,10 +180,10 @@ Simplify implements the following theories.
 1. The theory of equality, \texttt{=}
 
 2. The theory of arithmetic with functions \texttt{+}, \texttt{*}, \texttt{-},
-	 and relation symbols \texttt{>}, \texttt{<}, \texttt{<=}, and \texttt{>=}.
+   and relation symbols \texttt{>}, \texttt{<}, \texttt{<=}, and \texttt{>=}.
 
 3. The theory of maps with two functions \texttt{select} and \texttt{store} (ie. get/set),
-	 and two additional axoims.
+   and two additional axoims.
 
 4. Partial orders (?)
 
@@ -192,19 +194,19 @@ in linear arithmetic constraints about variables, pairs, car, and cdr.
 %  Java implementation:
 %    Chicory does instrumentation on JVM bytecode
 %     instrument_all_methods: https://github.com/codespecs/daikon/blob/master/java/daikon/chicory/Instrument.java#L409
-%			add_entry_instrumentation
-% 	  - https://github.com/codespecs/daikon/blob/master/java/daikon/chicory/Instrument.java#L825
-%			add_return_instrumentation
-%			 - instruments return statements
-% 		 - https://github.com/codespecs/daikon/blob/master/java/daikon/chicory/Instrument.java#L675
+%      add_entry_instrumentation
+%     - https://github.com/codespecs/daikon/blob/master/java/daikon/chicory/Instrument.java#L825
+%      add_return_instrumentation
+%       - instruments return statements
+%      - https://github.com/codespecs/daikon/blob/master/java/daikon/chicory/Instrument.java#L675
 %     daikon.chicory.Runtime
-%			- contains wrappers for values that are rewritten to?
-%			- Runtime.enter(...) is called at the top of every wrapped method
-%			- `dtrace_writer` records inference results
-%			daikon.chicory.DaikonVariableInfo
-%			- actually traverses values here
-%			- arrays are traversed eagerly, but only one level
-%				- subsequent levels use identityHashCode summaries
+%      - contains wrappers for values that are rewritten to?
+%      - Runtime.enter(...) is called at the top of every wrapped method
+%      - `dtrace_writer` records inference results
+%      daikon.chicory.DaikonVariableInfo
+%      - actually traverses values here
+%      - arrays are traversed eagerly, but only one level
+%        - subsequent levels use identityHashCode summaries
 
 
 \section*{Question 2}
