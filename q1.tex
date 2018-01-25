@@ -14,35 +14,54 @@ it need to be?
 
 \pagebreak
 
-\subsection{Space complexity of dynamic tracing}
-
-\subsection{Time complexity of dynamic tracing}
-
 To avoid the full cost of naive dynamic tracing, we leverage several
 known techniques from the higher-order contract checking literature.
 
-Firstly, most tracked Clojure collections are traversed lazily as they are used.
+\subsection{Space complexity of dynamic tracing}
+
+Map and function wrappers are space-efficient with respect to the stack, and
+redundant wrappers of the same type collapse so there is at most one level
+of wrapping of the same type at a given level.
+
+Some structural sharing of tracking data helps reduce the memory footprint
+of the tracking results.
+
+The heap size of the tracking data is linear in the number of observed
+tracking points.
+
+\subsection{Benchmarks}
+
+We use several small benchmarks to demonstrate the space-efficiency of
+function wrappers, and the linear nature of the tracking data.
+
+\subsection{Time complexity of dynamic tracing}
+
+Most tracked Clojure collections are traversed lazily as they are used.
 This includes (potentially infinite) lazy sequences and hash maps.
 Vectors are not currently lazily traversed, and we have not tried any vector-heavy
 benchmarks to observe the performance effect (but we hypothesize matrix-heavy
 code would suffer from a significant tracking penalty).
 
 Functions are similarly wrapped a la higher-order contract checking and tracked when invoked.
-Each function call must traverse its argument list to track them.
 
 Each function return tracks its return value.
 
-Objects simply record their class, including Arrays.
+Non-Clojure Objects simply record their class, including Arrays.
 
 Map wrappers are space-efficient with respect to the stack, and
 redundant wrappers collapse so there is only ever one level of
 wrapping.
 
-Increases the more values are reachable 
-
 \pagebreak
 
 \subsection{Space complexity of type inference}
+
+The type inference algorithm uses a linear amount of memory with respect
+to the number of distinct HMap types in the input.
+At its largest space usage, the algorithm creates a new alias for each HMap object.
+
+However, aliases consist of a symbol and an entry in a hash-map, so the constant
+factors are small.
 
 \subsection{Time complexity of type inference}
 
