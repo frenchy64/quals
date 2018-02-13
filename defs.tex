@@ -1,0 +1,40 @@
+\usepackage{amsmath, listings, amsthm, amssymb, proof, xspace}
+
+%%------------------------------------------------------------------------
+%% DEFINITION HELPERS
+%%------------------------------------------------------------------------
+
+%\newcommand{\alt}{~~|~~}
+\newcommand{\comp}[1]{\llbracket #1 \rrbracket}
+
+\newcommand{\inlinexp}[1]{
+{\footnotesize
+ \[\begin{array}{l}
+ #1
+ \end{array}\]}}
+
+\newcommand{\inlinexpa}[2]{
+{\footnotesize
+ \[\begin{array}{#1}
+ #2
+ \end{array}\]}}
+
+\newcommand{\infr} [3] [] {\infer[\textsc{#1}]{#3}{#2}}
+\newcommand{\iand}        {\qquad}
+
+\newcommand{\Ctxt}       {\mathcal{E}}
+\newcommand{\InCtxt} [1] {\Ctxt[#1]}
+
+
+%%------------------------------------------------------------------------
+%% REDUCTION RELATION MACROS
+%%------------------------------------------------------------------------
+
+\newcommand{\subst} [3]    {#3 [#2 / #1]}
+\newcommand{\dstep} [2]    {#1 ~\Downarrow~ #2}
+
+\newcommand{\ssosredex}        {\rightarrow}
+\newcommand{\ctxtreduce}       {\mapsto}
+\newcommand{\sstep}     [3] [] {#2 &\ssosredex&  #3 &\textsc{#1}}
+\newcommand{\ctxtstep}  [3] [] {#2 &\ctxtreduce& #3 &\textsc{#1}}
+

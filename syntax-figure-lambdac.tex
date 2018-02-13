@@ -1,0 +1,31 @@
+\begin{figure*}
+$$
+\begin{altgrammar}
+  \e{} &::=& \x{}
+                      \alt \v{} 
+                      \alt {\comb {\e{}} {\e{}}} 
+                      \alt {\abs {\x{}} {\e{}}}
+                      \alt {\ifexp {\e{}} {\e{}} {\e{}}}
+                &\mbox{Expressions} \\
+  \v{} &::=&          {\emptymap{}}
+											\alt {\err{}}
+                      \alt {\num{}}
+                      \alt \mapval{}
+                      \alt {\closure {\openv{}} {\abs {\x{}} {\e{}}}}
+                &\mbox{Values} \\
+  \mapval{} &::=&  {\curlymapvaloverright{\v{}}{\v{}}}
+                &\mbox{Map Values} \\
+\rho  &::=& [\overrightarrow{\x{} \mapsto \v{}}]
+                &\mbox{Environments} \\
+  p  &::=& \zerohuhliteral{} \alt \numberhuhliteral{} \alt \booleanhuhliteral{}
+					%\alt \nilhuhliteral{}
+                &\mbox{Predicates} \\
+  c	 &::=&  p \alt \getliteral{} \alt \assocliteral{} &\mbox{Constants} \\
+  \Ctxt &::=& [] \alt {\comb{\Ctxt}{\e{}}} \alt {\comb{\v{}}{\Ctxt}} \alt 
+								{\ifexp {\Ctxt} {\e{}} {\e{}}}
+                &\mbox{Contexts} \\
+
+\end{altgrammar}
+$$
+\caption{Syntax of Terms in $\lambda c$}
+\end{figure*}

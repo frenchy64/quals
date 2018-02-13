@@ -6,4 +6,29 @@ PLT Redex. Formulate a consistency property between contracted and
 uncontracted execution, and test it in redex.
 \end{verbatim}
 
-\input{syntax-figure}
+\subsection{Formal model}
+
+\input{syntax-figure-lambdac}
+
+We devise a base formal model for Clojure called $\lambda c$.
+We extend $\lambda c$ with clojure.spec without function contracts, and call
+this model $\lambda c_s$. 
+Then, we extend $\lambda c_s$ to support
+clojure.spec function contracts, and call this final model $\lambda c_{s}^{f}$.
+
+\input{syntax-figure-lambdacs}
+
+\input{syntax-figure-lambdacsf}
+
+\subsection{Consistency property}
+
+The base 
+
+\subsubsection{Counter-example}
+
+\subsection{Redex model}
+
+We model $\lambda c$ as a Redex language called \emph{Clojure}.
+The model includes also recursive functions and nil.
+
+To explore Redex, we use an Eval-Apply-Continue machine
