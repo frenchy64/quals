@@ -97,7 +97,7 @@ Finally, \texttt{A} references the number of (reachable) aliases in the
 alias environment.
 
 The entire algorithm is split into several passes, many of which
-rely on the \texttt{join} function, which we analyze first.
+rely on the \texttt{join} function, which we analyze in Section~\ref{join}.
 
 First, a naive type environment is generated. Two approaches
 are analyzed, 
@@ -115,7 +115,7 @@ environment entries.
 The overall time complexity is summarized in Section~\ref{overall-time-complexity}.
 
 \subsubsection{Join}
-
+\label{join}
 \begin{verbatim}
 join(D, W, U) = O(D * max(W, U^2))
 \end{verbatim}
