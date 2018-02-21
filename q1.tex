@@ -441,7 +441,16 @@ often via synchronized global variables that can be instrumented once-and-for-al
 
 \subsubsection{Space/time overhead of Daikon's type inference}
 
-This is described by Perkins and Ernst~\cite{Perkins04efficientincremental},
+The overhead of likely invariant detection
+is described by Perkins and Ernst~\cite{Perkins04efficientincremental}.
+They analyze the overhead of storing and checking the set of
+invariants that are currently true.
+Their presentation includes a simple incremental algorithm that
+features no optimizations, then they propose several candidate
+optimizations and emperically compare the performance of each
+approach.
+
+The simple incremental algorithm 
 
 \subsubsection{How to type check Daikon's invariants}
 
