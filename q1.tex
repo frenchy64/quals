@@ -21,15 +21,20 @@ known techniques from the higher-order contract checking literature.
 
 \subsubsection{Space complexity of dynamic tracing}
 
-Map and function wrappers are space-efficient with respect to the stack, and
-redundant wrappers of the same type collapse so there is at most one level
-of wrapping of the same type at a given level.
+The space complexity of dynamic tracing in Typed Clojure is similar
+to proxy-based higher-order contract checking.
+
+Map and function wrappers are space-efficient with respect to the stack, with
+redundant wrapper of the same type collapsing to at most one level of wrapping.
 
 Some structural sharing of tracking data helps reduce the memory footprint
-of the tracking results.
+of the tracking results. Specifically, the original source of a value
+is stored in a ``path'' (similar to a blame label in contract systems),
+and appending to this path uses constant heap space since it is represented
+using a immutable vector with structural sharing.
 
-The heap size of the tracking data is linear in the number of observed
-tracking points.
+%The heap size of the tracking data is linear in the number of observed
+%tracking points.
 
 %\subsubsection{Benchmarks}
 %
@@ -38,21 +43,16 @@ tracking points.
 
 \subsubsection{Time complexity of dynamic tracing}
 
-Most tracked Clojure collections are traversed lazily as they are used.
+Most tracked Clojure collections are traversed lazily as they are used,
+so incurs a $O(1)$ cost to each lookup.
 This includes (potentially infinite) lazy sequences and hash maps.
 Vectors are not currently lazily traversed, and we have not tried any vector-heavy
 benchmarks to observe the performance effect (but we hypothesize matrix-heavy
 code would suffer from a significant tracking penalty).
 
-Functions are similarly wrapped a la higher-order contract checking and tracked when invoked.
-
-Each function return tracks its return value.
-
-Non-Clojure Objects simply record their class, including Arrays.
-
-Map wrappers are space-efficient with respect to the stack, and
-redundant wrappers collapse so there is only ever one level of
-wrapping.
+Functions are similarly wrapped a la higher-order contract checking and tracked when invoked,
+so incur an overhead on every invocation.
+Non-Clojure Objects simply record their class (including arrays).
 
 \pagebreak
 
@@ -65,17 +65,54 @@ At its largest space usage, the algorithm creates a new alias for each HMap obje
 However, aliases consist of a symbol and an entry in a hash-map, so the constant
 factors are small.
 
+The algorithm also can use more space as more samples are processed. For example,
+a large union type could be accumulated by combining several samples.
+
 \subsection{Time complexity of type inference}
 
-Reference:
-
+\begin{figure}
+\begin{mdframed}
 \begin{description}
   \item [I] number of collected inference results
   \item [U] maximum number of union members (unordered types)
   \item [D] maximum depth of types
   \item [W] maximum width of non-union types (ordered types) (eg. HMap entries, function positions)
-  \item [A] maximum number of aliases in alias environment (reachable from the type environment)
+  \item [A] number of aliases in alias environment (reachable from the type environment)
 \end{description}
+\end{mdframed}
+\caption{Reference for variables used in time complexity analysis}
+\label{time-complexity-vars}
+\end{figure}
+
+To analyze the time complexity of dynamic type inference (after
+gathering samples), we reference several variables 
+defined in Figure~\ref{time-complexity-vars}.
+The variable \texttt{I} denotes the number of samples
+collected during dynamic tracing. The variable \texttt{U}
+denotes the maximum width of a union during the entire execution
+of type inference.
+The maximum depth and width of non-union types are denoted by
+\texttt{D} and \texttt{W} respectively.
+Finally, \texttt{A} references the number of (reachable) aliases in the
+alias environment.
+
+The entire algorithm is split into several passes, many of which
+rely on the \texttt{join} function, which we analyze first.
+
+First, a naive type environment is generated. Two approaches
+are analyzed, 
+one slow (Section~\ref{naive-gamma-slow}),
+and one fast (Section~\ref{naive-gamma-fast}).
+The implementation uses the second version in practice.
+
+Then several passes are applied to the resulting type and
+alias environments. First $squash\_vertically$
+(Section~\ref{squash-vertically}) creates local recursive
+types.
+Then $squash\_horizontally$ (Section~\label{squash-horizontally})
+merges similar recursive types that occur in different type/alias
+environment entries.
+The overal time complexity is summarized in Section~\ref{overall-time-complexity}.
 
 \subsubsection{Join}
 
@@ -94,6 +131,7 @@ A maximum number of $D$ recursive joins can occur, and $max(W, U^2)$ work is don
 at each level, so time complexity is $O(D * max(W, U^2))$.
 
 \subsubsection{Naive type environment creation}
+\label{naive-gamma-slow}
 
 1. Build naive type environment.
    Folds over inference results, `update' from the top of each type.
@@ -113,6 +151,7 @@ Since we do $(D + join(D, W, U))$ work for each result, time complexity
 is $O(I * (D + join(D, W, U)))$.
 
 \subsubsection{Naive type environment creation (optimized)}
+\label{naive-gamma-fast}
 
 1. Build naive type environment (optimized)
   Group inference results by path prefixes. Then join the groups
@@ -124,7 +163,7 @@ optimized\Gamma(I, D, W, U) = O(I * (D + join(D, W, U)))
 \]
 
 \subsubsection{Squash Vertically}
-
+\label{squash-vertically}
 Iterate down each type in the type environment and merge similarly "tagged"
 maps, resulting in a possibly recursive type.
 
@@ -148,6 +187,7 @@ squash\_vertically(\Gamma, A, D, W, U) = O(|\Gamma| * (D*W*U + A*join(D, W, U)))
 \]
 
 \subsubsection{Squash Horizontally}
+\label{squash-horizontally}
 
 Iterate over the reachable aliases (from the type environment)
 several times, merging based on several criteria.
@@ -185,7 +225,7 @@ squash\_horizontally(\Gamma, A, D, W, U) = O(&group\_req\_keys(A,D,W,U)\\
 \end{align*}
 
 \subsubsection{Overall time complexity}
-
+\label{overall-time-complexity}
 The overall time complexity is the sum of the previous passes.
 
 \begin{align*}
