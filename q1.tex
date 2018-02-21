@@ -14,10 +14,12 @@ it need to be?
 
 \pagebreak
 
+\subsection{Dynamic tracing Performance}
+
 To avoid the full cost of naive dynamic tracing, we leverage several
 known techniques from the higher-order contract checking literature.
 
-\subsection{Space complexity of dynamic tracing}
+\subsubsection{Space complexity of dynamic tracing}
 
 Map and function wrappers are space-efficient with respect to the stack, and
 redundant wrappers of the same type collapse so there is at most one level
@@ -29,12 +31,12 @@ of the tracking results.
 The heap size of the tracking data is linear in the number of observed
 tracking points.
 
-\subsection{Benchmarks}
+%\subsubsection{Benchmarks}
+%
+%We use several small benchmarks to demonstrate the space-efficiency of
+%function wrappers, and the linear nature of the tracking data.
 
-We use several small benchmarks to demonstrate the space-efficiency of
-function wrappers, and the linear nature of the tracking data.
-
-\subsection{Time complexity of dynamic tracing}
+\subsubsection{Time complexity of dynamic tracing}
 
 Most tracked Clojure collections are traversed lazily as they are used.
 This includes (potentially infinite) lazy sequences and hash maps.
@@ -450,12 +452,27 @@ features no optimizations, then they propose several candidate
 optimizations and emperically compare the performance of each
 approach.
 
-The simple incremental algorithm 
+The space complexity of the simple incremental algorithm is dominated 
+by the size of the grammar of properties. For example, if the grammar
+of properties consists of $=$ and $even$, with
+3 variables $x$, $y$, $z$, the initial (and largest) set of invariant assumptions
+is $x = y$, $y = z$, $x = z$, $even(x)$, $even(y)$, and $even(z)$.
+For reference, Daikon enables 152 properties by default, with
+12 ``derived variables'', the latter of which provide properties on composite variables
+like $a[x] = a[z]$. After a static analysis pass ruling out nonsensical invariants,
+the space usage is at least $O(v^9)$, where $v$ is the number of variables in scope.
 
-\subsubsection{How to type check Daikon's invariants}
+The time complexity of \emph{checking} invariants for each sample
+is similarly dominated by the size of the grammar of properties.
+They note, however, most invariants are removed quickly (after
+$O(1)$ samples), so performance improves as more samples
+are collected.
 
-"Simplify" is a theorem prover for Java. Daikon can compile its invariants
-to Simplify.
+\subsubsection{Checking Daikon's invariants in a refinement type system}
+
+Daikon has expressive invariants, but can they be statically verified?
+Yes, in fact Daikon supports generating annotations for a Java-based
+theorem prover called Simplify~\cite{Detlefs03simplifya}.
 
 Simplify implements the following theories.
 
