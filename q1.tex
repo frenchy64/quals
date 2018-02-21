@@ -343,10 +343,31 @@ Daikon is a related system to Typed Clojure's dynamic type inference.
 However, Daikon is built for ``invariant detection'', while our system
 is designed for ``dynamic type inference'' or ``value profiling''.
 
+There are two common implementation strategies for such tools. The first
+strategy, ``ruling-out'' (for invariant detection), assumes all invariants are true 
+and then use runtime analysis results to rule out
+impossible invariants. The second ``building-up'' strategy (for dynamic type inference)
+assumes nothing and then uses runtime analysis results to build up invariant/type knowledge.
+
+Both strategies have different space behavior with respect to representing
+the set of known invariants.
+The ruling-out strategy typically uses a lot of memory at the beginning,
+but then can free memory as it rules out invariants. For example, if
+\texttt{odd(x)} and \texttt{even(x)} are assumed, observing \texttt{x = 1}
+means we can delete and free the memory recording \texttt{even(x)}.
+Alternatively, the building-up strategy uses the least memory storing
+known invariants/types at the beginning, but increases memory usage
+as more the more samples are collected. For example, if we known
+\texttt{x : Any}, and we observe \texttt{x = "a"} and \texttt{x = 1}
+at different points in the program, we must use more memory to
+store the union \texttt{x : String $\cup$ Integer} in our set of known invariants.
+
 Examples of invariant detection tools include Daikon \cite{Ernst06thedaikon},
-DIDUCE \cite{hangal2002tracking}, and Carrot \cite{pytlik2003automated}.
+DIDUCE \cite{hangal2002tracking}, and Carrot \cite{pytlik2003automated}, and
+typically enhance statically typed languages with more expressive types or contracts.
 Examples of dynamic type inference include Rubydust \cite{An10dynamicinference},
-JSTrace \cite{saftoiu2010jstrace}, and TypeDevil \cite{pradel2015typedevil}.
+JSTrace \cite{saftoiu2010jstrace}, and TypeDevil \cite{pradel2015typedevil},
+and typically target untyped languages.
 
 There is some overlap between invariant detection and dynamic type inference
 tools. Usually, invariant detection detects very expressive relationships
@@ -358,34 +379,69 @@ languages where basic static type information is absent.
 
 \subsubsection{Daikon's expressivity vs Typed Clojure's dynamic inference}
 
-Processing in Clojure is done via functions, often with immutable variables and collections.
-Invariants 
+Daikon can reason about very expressive relationships between variables
+using properties like ordering ($x < y$), linear relationships ($y = ax + b$),
+and containment ($x \in y$). It also supports reasoning with ``derived variables''
+like fields ($x.f$), and array accesses ($a[i]$).
 
-The Java language requires type annotations for every variable, which Daikon utilizes.
-This also means basic type information does not need to be collected about variables,
-past whether they are null.
+Typed Clojure's dynamic inference can record heterogeneous data structures
+like vectors and hash-maps, but otherwise cannot express relationships
+between variables.
 
-Daikon is interested in invariants between method entry and method exit. For example,
-how a mutable variable might evolve over the course of a method call, or over the course
-of an object's life. This kind of data is less interesting in Clojure, since mutability,
-especially the usage of unsynchronized mutable local variable, is discouraged and usually
-seen as for experts only.
-
+There are several reasons for this. The most prominent is that Daikon
+primarily targets Java-like languages, so inferring simple type information
+would be redundant with the explicit typing disciplines of these languages.
+On the other hand, the process of moving from Clojure to Typed Clojure
+mostly involves writing simple type signatures without dependencies
+between variables. Typed Clojure recovers relevant dependent information
+via occurrence typing, and gives the option to manually annotate necessary
+dependencies in function signatures when needed.
 
 \subsubsection{Space/time overhead of Daikon's dynamic tracing}
 
-At each method entry/exit point, record the value of all variables in scope.
+Performance of dynamic tracing is not directly addressed in the Daikon
+literature, who only provide complexity analyses and optimizations for storing
+and checking invariants \emph{after} samples have been collected.
 
-How to track values:
+I have manually examined Chicory (the Java front-end to Daikon) to see how
+dynamic tracing is implemented.
+I found that Daikon records the value of all variables in scope
+at each method entry/exit point \footnote{Implemented in \texttt{daikon.chicory.DaikonVariableInfo}}.
+Then, to record values in Daikon, the following algorithm is used:
 
-For each Java primitive, record its value.
+\begin{itemize}
+  \item If the value is a Java primitive, record its value.
+  \item If the value is an array, traverse its contents and record identity hash codes
+    and/or primitive values.
+  \item Otherwise, record the class of the current object.
+\end{itemize}
 
-For each Array, traverse its contents and collect hash codes
-and/or primitive values.
+Notice this algorithm is non-recursive---while arrays are traversed eagerly, they
+are only traversed one level via an identity hash code summary (the closest equivalent to
+pointer addresses on the JVM).
+This is significantly different to Typed Clojure's value tracing algorithm,
+which recursively (but lazily) traverses potentially-deep data structures.
 
-Otherwise, get the class of the current object.
+Another difference is that Typed Clojure's dynamic tracing only tracks
+values for arguments/returns of a function, and ignores any variables
+that in are scope. There are several reasons behind this decision.
+First, Java-like object-oriented languages use fields as implicit
+arguments to methods, and Daikon distinguishes method-level, and class-level
+invariants which is achieved by checking class-level invariants during
+method calls.
+In Clojure, methods are replaced with pure functions (their output is defined only by the
+explicitly passed arguments), so the method/class-level distinction is
+not applicable.
+
+Second, Daikon chooses to reason about local mutation in Java-like languages,
+and so must record the values of the same variables different program points
+to observe mutation. However, local unsynchronized mutation is non-idiomatic
+in Clojure so re-tracking variables is almost always redundant---mutation is
+often via synchronized global variables that can be instrumented once-and-for-all.
 
 \subsubsection{Space/time overhead of Daikon's type inference}
+
+This is described by Perkins and Ernst~\cite{Perkins04efficientincremental},
 
 \subsubsection{How to type check Daikon's invariants}
 
