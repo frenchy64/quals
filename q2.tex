@@ -9,6 +9,80 @@ contracts vs higher-order functions that omit specifications of higher-order
 arguments or results.
 \end{verbatim}
 
+% arachne-pedestal: not fit for public consumption
+% https://github.com/arachne-framework/arachne-pedestal/blob/a0a21092063ae74c311566a10f8f14cf8756c7c9/src/arachne/pedestal/specs.clj
+
+% valuehash: fn returning fn
+% https://github.com/arachne-framework/valuehash/blob/fdd19b4a4c3b294d46fe7e0b50187290043b48aa/src/valuehash/specs.clj
+
+% dspec: utility function, checks direct HOF
+% https://github.com/lab-79/dspec/blob/26f88e74066e381c8569d175c1bd5948a8005bd0/src/clj/lab79/dspec/util.clj
+
+% async-connect: maps of fn handlers
+% https://github.com/tyano/async-connect/blob/4f30801485b68e60fc5352b8a169b6f5829d2553/src/async_connect/netty/handler.clj
+
+% async-connect: maps of fn's (channel ops)
+% https://github.com/tyano/async-connect/blob/4f30801485b68e60fc5352b8a169b6f5829d2553/src/async_connect/server.clj#L46
+
+% knotation: maps of fn's
+% https://github.com/knotation/knotation-cljc/blob/e3ed2722adc9e87d815066be55636017e6a9c30f/spec/org/knotation/format_spec.cljc#L11
+
+% devcards: direct HOF, also mixes ifn? checks
+% https://github.com/olivergeorge/devcards-vs-clojure-spec/blob/385e332c21e57b097b56e899c09e99a260daf3ad/src/devcards_vs_clojure_spec/core_specs.cljc#L7
+
+% sandbox: spec for fn returning (dependent) fn
+% https://github.com/dantheobserver/sandbox/blob/955202b5d3e9f6bbb4bae2169f9b527210d5ef81/src/sandbox/observable.clj#L5
+
+% email-tool: map of fn's
+% https://github.com/andrewzhurov/email-tool/blob/fd6bf979c5534315edf0d5e2ca762a879d0c9587/src/email_tool/parts.clj#L8
+
+% dcsite: map of fn's (react event handlers)
+% https://github.com/daveconservatoire/dcsite-cljs/blob/f02e31c081d8dc1d7b1913a0b7f6906bbc0b5824/src/cljs/daveconservatoire/support/specs.cljs#L47
+
+% chejoobot: fn returning fn
+% https://github.com/chejoo-platform/chejoobot-clj/blob/922fdadd6dd58a62ca07d9c350764d0719322d2d/src/chejoobot/handlers/filters.clj#L9
+% chejoobot: map of fn
+% https://github.com/chejoo-platform/chejoobot-clj/blob/922fdadd6dd58a62ca07d9c350764d0719322d2d/src/chejoobot/handlers/core.clj#L35
+
+% bifocal: lenses, everything is HOF, sorely missing polymorphism
+% https://github.com/andrewmcveigh/bifocal/blob/850e79452f4f9bc6966768055acfc7aae6671f80/src/bifocal/lens.clj#L36
+
+% triboard: fn taking fn
+% https://github.com/QuentinDuval/triboard/blob/dc9d60197262857bbea0756a5a395ba248929961/src/cljs/triboard/view/frame.cljs#L15
+
+% yoose: fn taking handler fn
+% https://github.com/brianium/yoose/blob/6400ed9e20f8472411c6cb0185a392cda097a0b8/src/brianium/yoose/spec.clj#L9
+
+% cljs-fn: map of fn's
+% https://github.com/briansunter/cljs-hn/blob/a15bac4535fd88d6f79a80864a0301fe3d7d8d60/src/hackernews/components/list.cljs#L15
+
+% kxix.collect: fn taking handler/processing fn's
+% https://github.com/MastodonC/kixi.collect/blob/8a5e6a0de041f5684602235be6466afa805be92d/src/kixi/collect/aggregate.clj#L15
+
+% frereth-common: or + fn's !!!
+% https://github.com/jimrthy/frereth-common/blob/ff59081b170984d25e8e8192d34348ce36f7296c/src/com/frereth/common/methods.cljc#L33-L36
+
+% ring-spec: fn taking callback fn
+% https://github.com/mpenet/ring-spec/blob/f7db868d8e6facab72c3cba925bf7c12496c1a36/src/clj/qbits/ring_spec.clj#L85
+
+% datomic-spec: homogeneous map with fn vals
+% https://github.com/lab-79/datomic-spec/blob/880ab123b49da8cc79c27cd78c9a2455b260e4b9/src/cljc/lab79/datomic_spec/gen_overrides.cljc#L6
+
+% frereth-client: map with fn's
+% https://github.com/jimrthy/frereth-client/blob/39d0be51a1337eac7b5645be3bbb0a598c17eb53/src/com/frereth/client/repl.clj#L11
+
+% slide: fn taking fn
+% https://github.com/saulshanabrook/slide/blob/77e5c40e17db276ebcd7924e3a9d292e69231e16/src/examples/stats.clj#L62
+
+% mqtt: many fspecs, contain very specific args
+% https://github.com/dvlopt/mqtt/blob/c7f2dcaf8d4df0a31460c16f24c5b402f21df655/src/dvlopt/mqtt/v3.clj
+
+% frereth-common: takes and returns fn
+% https://github.com/jimrthy/frereth-common/blob/88e57bb942334124f29be1b9405bbf04c9c2af08/src/com/frereth/common/aleph.clj#L98
+
+% chu.graph: fn returning fn
+% https://github.com/CharlesHD/chu.graph/blob/a820ef8456b44b1044d7f6cd9340a5504ad393de/src/chu/graph.cljc#L17
+
 \subsection{What spec features are used in real systems}
 
 \subsection{How precise are spec annotations in practice?}
