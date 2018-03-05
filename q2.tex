@@ -224,12 +224,12 @@ the search features of \texttt{GitHub}~\footnote{\texttt{https://github.com}} an
 
 GitHub indexes tens of thousands of open source Clojure projects, and provides
 a rudimentary search interface that is sufficient for discovering textual occurrences 
-of functions and macros.
+of functions and macros. False positives are common however, such as
 GitHub does not distinguish
 between ``toy'' projects and those with official releases, so we remove the former manually.
 This is because toy projects do not give a good indication of real-world idioms---for example,
 hundreds of projects simply contain experiments with \texttt{clojure.spec} that
-are not offically released or maintained.
+are not officially released or maintained.
 
 CrossClj maintains a rich database of cross-links between Clojure projects.
 As of Febuary 2018, it indexes 9,438 projects, all of which have official releases (unlike
@@ -237,7 +237,7 @@ GitHub search) and thus have more credibility that they are used.
 Cross-links are gathered for function/macro usages, and transitive project dependencies.
 CrossClj also distinguishes between ClojureScript and Clojure code
 
-\subsubsection{Data gathering}
+\subsubsection{Frequency Data gathering}
 
 Simple GitHub searches were used to find occurrences of \texttt{fdef} and \texttt{fspec}.
 As of March 2018,
@@ -246,8 +246,47 @@ yield around 2,000 results~\footnote{\texttt{https://github.com/search?q=fdef+la
 and for \texttt{fspec} 
 \footnote{\texttt{https://github.com/search?q=fspec+language\%3Aclojure\&type=Code}}
 yield around 600 results.
+Searches were quite noisy, so less actual examples of these forms were found.
 
-CrossClj function/macro 
+CrossClj function/macro cross-links were used to find occurrences of spec idioms.
+From the latest index (updated February 20th 2018)
+\texttt{fdef} occurs in 721 top-level forms over 83 
+projects~\footnote{\texttt{https://crossclj.info/fun/clojure.spec.alpha/fdef.html}}, and
+\texttt{fspec} occurs in 22 top-level forms over 8 
+projects~\footnote{\texttt{https://crossclj.info/fun/clojure.spec.alpha/fspec.html}}
+(the mode number of occurrences per project was 1).
+
+An error was found in the CrossClj data, however.
+To find a baseline number of projects using \texttt{clojure.spec}, we looked for occurrences of
+\texttt{s/def}, used to define spec
+aliases. It should greatly outnumber the number of \texttt{fdef}'s in the ecosystem---we were
+surprised to find CrossClj reports the opposite.
+We identified that multiple occurrences of \texttt{s/def} in the same project are not always counted by CrossClj,
+so while CrossClj claims \texttt{s/def} occurs in more 60\% more projects than \texttt{fdef} (125), 
+CrossClj reports \texttt{s/def} only occurs in 349 top-level 
+forms~\footnote{\texttt{https://crossclj.info/fun/clojure.spec.alpha/def.html}}.
+The latter number is too low---CrossClj reports, for example, the \texttt{clj-time}
+library only has 2 occurrences of \texttt{s/def}, but it actually has 7 occurrences.
+
+We did not notice such an error in the counts for \texttt{fspec} and \texttt{fdef}, but
+this error reduces confidence on the exact numbers. Interestingly, the \emph{relative}
+numbers of projects using these forms matches our intuition---\texttt{fspec} occurs
+10 times less often than \texttt{fdef}, and \texttt{fdef} occurs about half as often as \texttt{s/def}.
+Still, these numbers should be treated with suspicion.
+
+\subsubsection{Project Samples}
+
+We selected several dozen projects that use \texttt{fspec} to manually examine.
+They were chosen by first searching GitHub for \texttt{fspec} occurrences, and
+manually choosing the first few dozen results, manually keeping only projects
+seemed to have official releases.
+
+We also searched for negative examples of \texttt{fspec} usage---that is, occurrences
+of higher-order functions with specs that did not use \texttt{fspec}---by searching for
+both \texttt{fdef} and 
+\texttt{ifn?}~\footnote{\texttt{https://github.com/search?utf8=\%E2\%9C\%93\&q=ifn\%3F+fdef+language\%3Aclojure\&type=Code}}, 
+the flat contract for Clojure functions.
+Several dozen candidates were selecting using the same method.
 
 \subsection{}
 
@@ -258,6 +297,63 @@ CrossClj function/macro
 \subsection{How frequently are higher-order functions annotated with higher-order specs? Why?}
 
 \subsection{How frequently are higher-order functions not annotated with higher-order specs?}
+
+% arachne-fileset : explicitly avoids fspec, comments out more expressive specs to avoid generative behaviour
+% https://github.com/arachne-framework/arachne-fileset/blob/0336d2d8d273eb1e0a862641000da1bd76099626/src/arachne/fileset/specs.clj#L7
+
+% z-com : uses ifn? (probably polymorphic 1 arg function), probably doesn't make sense to gen
+% https://github.com/aw7/z-com/blob/3180acf693f620bde5c7fb9d7c300e5deb02f88a/src/z_com/standard.cljs#L18
+
+% meiro : uses ifn? (unclear how to fspec, might be possible with very specific generators)
+% https://github.com/defndaines/meiro/blob/19f93996b87663fec5ed70c4966d114aa4855d6b/src/meiro/backtracker.clj#L17
+% - another 3 occurrences of ifn?
+% https://github.com/defndaines/meiro/blob/f4fe98f8a54ffd0cc78a671de96bcd9727904c0c/src/meiro/core.clj#L201
+
+% comfy : utility library, uses ifn? for HOF's (19 occurrences in about a dozen very polymorphic function specs)
+% https://github.com/madstap/comfy/blob/bbca80f269a912a3a4914188d8dac29e5edaca0b/src/madstap/comfy.cljc
+% - 4 more ifn?'s
+% https://github.com/madstap/comfy/blob/8c5b43802b8d263abfbbc04f21a7461dcfa08d49/src/madstap/comfy/alpha.cljc
+
+% ferje : polymorphic "app(ly)" function uses ifn?
+% https://github.com/chourave/ferje/blob/d8a3261309a994bdbaf6e3af29fc6d22c3e51844/src/ferje/util.clj#L33
+
+% huri : 12 occurrences of ifn? (here combines `s/or` and ifn?, so fspec probably not appropriate)
+% https://github.com/sbelak/huri/blob/fc98c5f1870f524c1e2662980085b6a258abd5cf/src/huri/core.clj#L159-L161
+
+% arche : ifn? takes a "User Defined Type" (keyword), perhaps hard to generate?
+% https://github.com/troy-west/arche/blob/1c739d178cbc5e1e1f0ac67feb64da2f8e82e099/src/troy_west/arche/spec.clj#L36
+
+% conllu-clj : ifn? for `keyfn`, but can only be one of 2 predefined def's
+% https://github.com/ysmiraak/conllu-clj/blob/6bc02c8f3a28dcea871c20fb965878b21fb0c5e5/src/conllu/eval.clj#L19
+% - 2 more ifn?'s, arbitrary transformation functions
+% https://github.com/ysmiraak/conllu-clj/blob/564e64a94cfde69f58dc37da183e735ebd5a07bb/src/conllu/parse.clj#L42
+
+% planck : TCP data handlers are ifn?
+% https://github.com/mfikes/planck/blob/3bc8b174834cf413dbc7415f7af30955adcc27b0/planck-cljs/src/planck/socket/alpha.cljs#L11-L12
+
+% owlet : callback is ifn?
+% https://github.com/codefordenver/owlet/blob/4864e0cbc7726501cc58a1362347f07f10524ed7/src/cljs/owlet/views/confirm.cljs#L12
+
+% sqlingvo : evaluation fn is ifn? + another (latter could be enum of fns tbh)
+% https://github.com/r0man/sqlingvo/blob/183014264e998366cdb906dbfe35a984c7d5443f/src/sqlingvo/db.cljc
+
+% proletariat : 2 HOF helpers with IFn (reduce, conj wrappers)
+% https://github.com/LiaisonTechnologies/proletariat/blob/2a9a8cb8185785cb1d12376da21ddb97d5e43d51/src/proletariat/core.clj#L566
+
+% mazes : ifn? for predicate arg (but rest of fn is also sparsely annotated with sequential?)
+% https://github.com/amacdougall/mazes/blob/1766a5fb2a3bbfc3141f44c09a2477a1ec65edef/src/cljc/mazes/generators/wilson.cljc#L36
+
+% Arcadia : listener is ifn?
+% https://github.com/arcadia-unity/Arcadia/blob/a0f1ee9f3d8a5b248bb415001d2d0cb2d27527db/Source/arcadia/internal/state.clj#L52
+
+% hive : callback is ifn?
+% https://github.com/hiposfer/hive/blob/f4323cc6ddba894942ba37329d4a5f7f7f974024/src/hive/services/raw/location.cljs#L12
+
+% datacore : map of callbacks is ifn? vals, + 4 function inputs as ifn?
+% https://github.com/stathissideris/datacore/blob/e4ab7f4822edfccca821fb8f4f9ec81a69e9d056/src/datacore/cells.clj#L59
+
+% ambiparse : predicate is ifn?
+% https://github.com/brandonbloom/ambiparse/blob/eeb047878e4990a877810ac4805a45d8cfe9acfb/src/ambiparse/gll.clj#L175
 
 \subsection{Conclusions}
 
