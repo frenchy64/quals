@@ -194,7 +194,7 @@ We selected 18 open source projects that use \texttt{fspec} to manually examine.
 They were chosen by first searching GitHub for \texttt{fspec} occurrences, and
 manually choosing the first few dozen results, manually keeping only projects
 seemed to have official releases.
-Figure~\ref{fspectable} summarizes these findings. We have included the projects
+Figure~\ref{fspectable} summarizes these findings. We have included the project
 names and our scratch notes as Appendix~\label{appendix1}.
 
 We also searched for negative examples of \texttt{fspec} usage---that is, occurrences
@@ -203,8 +203,7 @@ both \texttt{fdef} and
 \texttt{ifn?}~\footnote{\texttt{https://github.com/search?utf8=\%E2\%9C\%93\&q=ifn\%3F+fdef+language\%3Aclojure\&type=Code}}, 
 the flat contract for Clojure functions.
 Several dozen candidates were selecting using a similar method via GitHub search.
-We have included the projects
-names and our scratch notes as Appendix~\label{appendix2}.
+Appendix~\label{appendix2} contains the projects and our scratch notes for this experiment.
 
 \subsection{What spec features are used in real systems}
 
@@ -225,13 +224,12 @@ names and our scratch notes as Appendix~\label{appendix2}.
   Total occurrences in \texttt{fdef} return & 14  (18\%) & 0 \\
   Total occurrences in map spec & 41 & 2 \\
   \tabitem
-  Total occurrences in heterogeneous map spec & 40 & 2 \\
+  Total occurrences in heterogeneous map spec & 40 (97\%) & 2 \\
   \tabitem
-  Total occurrences in homogenous map spec & 1 & 0 \\
+  Total occurrences in homogenous map spec & 1 (3\%) & 0 \\
 
 \end{tabular}
-\caption{Function specs in practice, in 18 open source projects sourced from
-  GitHub that utilized \texttt{fspec}. }
+\caption{Function specs in practice, in 18 open source projects sourced from GitHub that utilized \texttt{fspec}. }
 \label{fspectable}
 \end{figure*}
 
@@ -246,14 +244,53 @@ First, we measure how many times \texttt{fspec} occurs in top-level function
 specs (i.e., \texttt{fdef} forms). Because spec has different semantics for
 checking the argument and return of top-level function specs, we split this
 category into occurrences in the arguments spec and return spec.
-We also similarly measure the occurrences of \texttt{ifn?} in these projects.
+We also similarly measure the occurrences of \texttt{ifn?} in these projects,
+which was sparsely used in these projects.
 
 We found 82\% \texttt{fspec} instances occuring in the argument position,
 with 18\% in the return position.
 
-Clojure.spec instrumentation does not check the return values from functions.
+Second, we measure the frequency of \texttt{fspec} in a hash-map spec.
+Of the occurrences of \texttt{fspec} in map specifications, 
+we found a strong preference for using heterogenous map specs (97\%),
+with the rest being homogeneous maps.
+Similar to the previous experiment, the flat function contract \texttt{ifn?} was rarely used 
+in map specs in these projects.
 
-"Note that the :ret and :fn specs are not checked with instrumentation as validating the implementation should occur at testing time."
+We noticed several interesting things while conducting these experiments.
+
+There was only 2 occurrence of nesting function specs more than 2 deep---in a library
+that provides functional lenses~\footnote{https://github.com/andrewmcveigh/bifocal}.
+Of those, one used 3 \texttt{fspec}s, the other 2 \texttt{fspec}s with a terminating \texttt{ifn?}.
+
+We also noticed several users combining \texttt{fspec}s with the \texttt{or} spec
+for disjunctions. It's unclear how well this works in practice (and might only be
+there for documentation), but the ``looser'' generative testing semantics of \texttt{fspec}
+seems to have more compatibility with disjunction contracts than the ``stricter''
+proxy-based verification approach.
+
+Spec also provides the ability to write dependent function contracts via the \texttt{:fn}
+keyword option of \texttt{fspec}, allowing programmers
+to add custom code to verify the relationship between function arguments and return values.
+We found several interesting dependent contracts that used surprising techniques like
+memoization to verify calls to higher-order functions~\footnote{https://github.com/CharlesHD/chu.graph}.
+
+Some developers explicitly worked around the \texttt{fspec}'s generative testing semantics.
+We found several comments and workarounds explaining why \texttt{fspec}s were not
+appropriate in particular contexts. Common concerns were
+\\
+\begin{itemize}
+	\item triggering function side effects,
+	\item difficultly writing generators for testing the function, and
+	\item being unsure whether generative testing was appropriate.
+\end{itemize}
+
+We speculate the lack of polymorphic function specs contributed to these concerns.
+Since instances of a type variable were replaced with \texttt{any?} specs, writing
+a generator often did not make sense. It's unclear whether polymorphic specs are
+even feasible to check, but some developers at least seem attached to the documentation
+capabilities of \texttt{fspec}, perhaps suggesting more control over the testing
+semantics of \texttt{fspec} would be welcomed by spec users.
 
 % function nesting:
 % - lens library had largest nesting
@@ -262,7 +299,10 @@ Clojure.spec instrumentation does not check the return values from functions.
 
 \subsection{How frequently are higher-order functions not annotated with higher-order specs?}
 
-
 \subsection{Conclusions}
+
+Clojure.spec instrumentation does not check the return values from functions.
+
+"Note that the :ret and :fn specs are not checked with instrumentation as validating the implementation should occur at testing time."
 
 % how does no polymorphism interact with fspec semantics? are they more useful together?
