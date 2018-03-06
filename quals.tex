@@ -4,6 +4,7 @@
 \include{defs}
 \usepackage{amsmath}
 \usepackage{mdframed}
+\usepackage{booktabs}
 %\usepackage{enumerate}
 %\usepackage{fancyvrb}
 %\usepackage{amsfonts,graphicx}
@@ -20,9 +21,13 @@
 \usepackage{graphicx}
 \graphicspath{ {images/} }
 
+\newcommand{\tabitem}{~~\llap{\textbullet}~~}
+
 \usepackage[utf8]{inputenc}
 \usepackage[english]{babel}
 \usepackage{enumitem}
+
+\newcommand{\verbatimfont}[1]{\renewcommand{\verbatim@font}{\ttfamily#1}}
 
 \begin{document}
 \title{Qualifying Exam}
@@ -44,5 +49,9 @@
 \input{q3}
 
 \bibliography{bibliography}
+
+\pagebreak
+\appendix
+\input{appendix}
 
 \end{document}
