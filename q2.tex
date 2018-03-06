@@ -108,8 +108,8 @@ called several hundred times with generated values conforming to \texttt{int?},
 and checks each call returns an \texttt{int?}.
 Then, \texttt{[1 2 3]} is eagerly checked against \texttt{(s/coll-of int?)}.
 The original \texttt{intmap} function is then called with the original arguments,
-yielding a value \texttt{(1 2 3)}. This value is then eagerly checked against
-\texttt{(s/coll-of int?)}, and the original return value is passed to the calling
+yielding a value \texttt{(1 2 3)}. Instrumentation does not check return value specs,
+so \texttt{(s/coll-of int?)} is ignored, and the original return value is passed to the calling
 context.
 
 \subsection{Research questions}
@@ -330,16 +330,37 @@ Several dozen candidates were selecting using the same method.
 % https://github.com/dvlopt/mqtt/blob/c7f2dcaf8d4df0a31460c16f24c5b402f21df655/src/dvlopt/mqtt/v3.clj
 
 % chu.graph: fn returning fn
+% - 11 fspecs
+%  - 8 function taking fn
+%  - extremely complicated dependent function specs
+%   - https://github.com/CharlesHD/chu.graph/blob/a820ef8456b44b1044d7f6cd9340a5504ad393de/src/chu/graph.cljc#L78-L84
+%   - Note: are these even used?
 % https://github.com/CharlesHD/chu.graph/blob/a820ef8456b44b1044d7f6cd9340a5504ad393de/src/chu/graph.cljc#L17
 
 % takelist: fn returning fn
+% - 1 fspec
+%   - 1 fn returning fn
 % https://github.com/alexanderkiel/takelist/blob/434ef6f6e05ca406c446b81fa5a77c7f0519c355/src/takelist/app.clj#L27
 
 % java.jdbc: seems dubious these are ever used, unless fn's are stubbed.
+% - 6 fspec
+%   - 1 fn taking fn
+%   - 7 fn taking map of fn
+%   - 1 fn returning fn
+% - 1 fspec commented out
+%   - improved custom generator needed (database ResultSet's)
 % https://github.com/clojure/java.jdbc/blob/64a79366fa464be75bdf4bdda133441b9d1efb26/src/main/clojure/clojure/java/jdbc/spec.clj#L124
 
 % sparkle: disjunction between map and fn
+% - 1 fspec
+%  - (or keys fspec)
+%  - commented out dependent :fn clause
 % https://github.com/GradySimon/sparkle/blob/d5d82c37ab6be8359be7d3b5524d8b32dac452a1/src/sparkle/spec.clj#L18-L24
+
+Clojure.spec instrumentation does not check the return values from functions.
+
+"Note that the :ret and :fn specs are not checked with instrumentation as validating the implementation should occur at testing time."
+
 
 \subsection{How frequently are higher-order functions not annotated with higher-order specs?}
 
