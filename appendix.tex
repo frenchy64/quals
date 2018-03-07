@@ -148,25 +148,37 @@ This section we put our notes on the second experiment.
     \fontsize{5pt}{7pt}\selectfont
 \begin{verbatim}
 arachne-fileset : explicitly avoids fspec, comments out more expressive specs to avoid generative behaviour
+- 5 fn taking ifn?
+- 2 homogeneous map of ifn?
+- Comment: ;; Need to override specs here so it doesn't try to gen when I instrument
 https://github.com/arachne-framework/arachne-fileset/blob/0336d2d8d273eb1e0a862641000da1bd76099626/src/arachne/fileset/specs.clj#L7
 
 z-com : uses ifn? (probably polymorphic 1 arg function), probably doesn't make sense to gen
+- 4 fn taking ifn?
+- 4 heterogeneous map of ifn?
 https://github.com/aw7/z-com/blob/3180acf693f620bde5c7fb9d7c300e5deb02f88a/src/z_com/standard.cljs#L18
 
 meiro : uses ifn? (unclear how to fspec, might be possible with very specific generators)
 https://github.com/defndaines/meiro/blob/19f93996b87663fec5ed70c4966d114aa4855d6b/src/meiro/backtracker.clj#L17
-- another 3 occurrences of ifn?
+- 2 fn taking ifn?
+- 1 fn returning ifn?
 https://github.com/defndaines/meiro/blob/f4fe98f8a54ffd0cc78a671de96bcd9727904c0c/src/meiro/core.clj#L201
 
 comfy : utility library, uses ifn? for HOF's (19 occurrences in about a dozen very polymorphic function specs)
+- 16 fn taking ifn?
+- 3 fn returning ifn?
+	- possible transducer returns, like in (map f)
 https://github.com/madstap/comfy/blob/bbca80f269a912a3a4914188d8dac29e5edaca0b/src/madstap/comfy.cljc
-- 4 more ifn?'s
-https://github.com/madstap/comfy/blob/8c5b43802b8d263abfbbc04f21a7461dcfa08d49/src/madstap/comfy/alpha.cljc
 
 ferje : polymorphic "app(ly)" function uses ifn?
+- 1 fn taking ifn?
+	 - polymorphic
 https://github.com/chourave/ferje/blob/d8a3261309a994bdbaf6e3af29fc6d22c3e51844/src/ferje/util.clj#L33
 
 huri : 12 occurrences of ifn? (here combines `s/or` and ifn?, so fspec probably not appropriate)
+- 109 fn taking ifn?
+- 30 heterogeneous map ifn?
+- 93 homogeneous map ifn?
 https://github.com/sbelak/huri/blob/fc98c5f1870f524c1e2662980085b6a258abd5cf/src/huri/core.clj#L159-L161
 
 arche : ifn? takes a "User Defined Type" (keyword), perhaps hard to generate?
