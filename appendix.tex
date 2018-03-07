@@ -182,38 +182,60 @@ huri : 12 occurrences of ifn? (here combines `s/or` and ifn?, so fspec probably 
 https://github.com/sbelak/huri/blob/fc98c5f1870f524c1e2662980085b6a258abd5cf/src/huri/core.clj#L159-L161
 
 arche : ifn? takes a "User Defined Type" (keyword), perhaps hard to generate?
+- 6 fn taking ifn?
+- 6 heterogeneous map ifn?
 https://github.com/troy-west/arche/blob/1c739d178cbc5e1e1f0ac67feb64da2f8e82e099/src/troy_west/arche/spec.clj#L36
 
 conllu-clj : ifn? for `keyfn`, but can only be one of 2 predefined def's
+- 1 fn taking ifn?
 https://github.com/ysmiraak/conllu-clj/blob/6bc02c8f3a28dcea871c20fb965878b21fb0c5e5/src/conllu/eval.clj#L19
-- 2 more ifn?'s, arbitrary transformation functions
+- 2 fn taking ifn?
+	- arbitrary transformation functions
 https://github.com/ysmiraak/conllu-clj/blob/564e64a94cfde69f58dc37da183e735ebd5a07bb/src/conllu/parse.clj#L42
 
 planck : TCP data handlers are ifn?
+- 2 fn taking ifn?
 https://github.com/mfikes/planck/blob/3bc8b174834cf413dbc7415f7af30955adcc27b0/planck-cljs/src/planck/socket/alpha.cljs#L11-L12
 
 owlet : callback is ifn?
+- 1 fn taking ifn?
+	- callback
 https://github.com/codefordenver/owlet/blob/4864e0cbc7726501cc58a1362347f07f10524ed7/src/cljs/owlet/views/confirm.cljs#L12
 
 sqlingvo : evaluation fn is ifn? + another (latter could be enum of fns tbh)
+- 2 fn returning ifn?
+- 2 heterogeneous map ifn?
+	- ifn's are interfaces to db
 https://github.com/r0man/sqlingvo/blob/183014264e998366cdb906dbfe35a984c7d5443f/src/sqlingvo/db.cljc
 
 proletariat : 2 HOF helpers with IFn (reduce, conj wrappers)
+- 2 fn taking ifn?
+	- could be polymorphic
 https://github.com/LiaisonTechnologies/proletariat/blob/2a9a8cb8185785cb1d12376da21ddb97d5e43d51/src/proletariat/core.clj#L566
 
 mazes : ifn? for predicate arg (but rest of fn is also sparsely annotated with sequential?)
+- 1 fn taking ifn?
 https://github.com/amacdougall/mazes/blob/1766a5fb2a3bbfc3141f44c09a2477a1ec65edef/src/cljc/mazes/generators/wilson.cljc#L36
 
 Arcadia : listener is ifn?
+- 1 fn taking ifn?
 https://github.com/arcadia-unity/Arcadia/blob/a0f1ee9f3d8a5b248bb415001d2d0cb2d27527db/Source/arcadia/internal/state.clj#L52
 
 hive : callback is ifn?
+- 1 fn taking ifn?
+- 1 heterogeneous map ifn?
 https://github.com/hiposfer/hive/blob/f4323cc6ddba894942ba37329d4a5f7f7f974024/src/hive/services/raw/location.cljs#L12
 
 datacore : map of callbacks is ifn? vals, + 4 function inputs as ifn?
+- 14 fn taking ifn?
+- 11 fn returning ifn?
+- 22 heterogeneous map ifn?
+- 11 homogeneous map ifn?
 https://github.com/stathissideris/datacore/blob/e4ab7f4822edfccca821fb8f4f9ec81a69e9d056/src/datacore/cells.clj#L59
 
 ambiparse : predicate is ifn?
+- 1 fn returning ifn?
+- 2 heterogeneous map ifn?
 https://github.com/brandonbloom/ambiparse/blob/eeb047878e4990a877810ac4805a45d8cfe9acfb/src/ambiparse/gll.clj#L175
 \end{verbatim}
 \endgroup

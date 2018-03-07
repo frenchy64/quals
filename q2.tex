@@ -122,7 +122,7 @@ I aim to answer these research questions:
     function semantics in practice?
 \end{itemize}
 
-I do not attempt to answer the following questions, which I hypothesize are
+I do not attempt to answer the following questions:
 
 \begin{itemize}
   \item How frequently do users instrument specs for runtime verification?
@@ -254,6 +254,7 @@ Second, we measure the frequency of \texttt{fspec} in a hash-map spec.
 Of the occurrences of \texttt{fspec} in map specifications, 
 we found a strong preference for using heterogenous map specs (97\%),
 with the rest being homogeneous maps.
+If \texttt{fspec} occurs in a nested map, each map spec occurrence is counted.
 Similar to the previous experiment, the flat function contract \texttt{ifn?} was rarely used 
 in map specs in these projects.
 
@@ -298,6 +299,32 @@ semantics of \texttt{fspec} would be welcomed by spec users.
 % - depth 2 fspec's + terminating ifn?
 
 \subsection{How frequently are higher-order functions not annotated with higher-order specs?}
+
+\begin{figure*}[t]
+
+\begin{tabular}{lll}
+      \toprule
+  & \texttt{fspec} & \texttt{ifn?} \\
+  \midrule
+  Total occurrences in \texttt{fdef} & 0 & 188 \\
+  \tabitem
+  Total occurrences in \texttt{fdef} arguments & 0 & 170 (90\%)\\
+  \tabitem
+  Total occurrences in \texttt{fdef} return & 0 & 18 (10\%)\\
+  Total occurrences in map spec & 0 & 173 \\
+  \tabitem
+  Total occurrences in heterogeneous map spec & 0 & 67 (39\%) \\
+  \tabitem
+  Total occurrences in homogenous map spec & 0 & 106 (61\%)\\
+
+\end{tabular}
+\caption{Flat function specs in practice, in 17 open source projects sourced from GitHub that utilized \texttt{ifn?}.
+Note, the 106 homogeneous map specs were sourced only from 3 projects, with one having 93 occurrences.
+Heterogeneous map specs were from 7 projects, with maximum 30 occurrences.
+}
+\label{fspectable}
+\end{figure*}
+
 
 \subsection{Conclusions}
 
