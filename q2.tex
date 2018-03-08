@@ -35,9 +35,9 @@ libraries, it is interesting to consider how programmers use \texttt{clojure.spe
 in practice. For example, do programmers find the semantics of treating functions
 as data at rest useful?
 
-Unfortunately, specs are opt-in with non-standard hooks, so it is difficult to
-correlate someone writing a spec with that person \emph{using} the spec, which
-would imply the person finding the spec's semantics useful.
+Unfortunately since specs are opt-in, it is difficult to
+correlate someone writing a spec with that person \emph{using} the spec,
+implying spec's semantics as being useful.
 Nevertheless, in the following sections we attempt to draw conclusions about
 spec's common usage based mostly on the frequency of spec annotations.
 
@@ -48,6 +48,7 @@ and \texttt{stest} to \texttt{clojure.spec.test.alpha}.
 
 \begin{verbatim}
 (require '[clojure.spec.alpha :as s])
+(require '[clojure.spec.test.alpha :as stest])
 \end{verbatim}
 
 There are two kinds of function checking semantics in \texttt{clojure.spec}.
@@ -79,7 +80,7 @@ in the form of the ``tagged'' heterogeneous collection spec
 \texttt{:f} for the function and \texttt{:c} as the collection.
 
 The \texttt{s/fspec} spec is another kind of function spec,
-specifically for non-top-level functions (like function arguments
+specifically for non-top-level functions (such as function arguments
 to top-level functions). It has a similar syntax to \texttt{s/fdef},
 but a function name is not provided.
 
@@ -149,7 +150,7 @@ CrossClj maintains a rich database of cross-links between Clojure projects.
 As of Febuary 2018, it indexes 9,438 projects, all of which have official releases (unlike
 GitHub search) and thus have more credibility that they are used.
 Cross-links are gathered for function/macro usages, and transitive project dependencies.
-CrossClj also distinguishes between ClojureScript and Clojure code
+Unlike GitHub, CrossClj also distinguishes between ClojureScript and Clojure code
 
 \subsubsection{Frequency Data gathering}
 
@@ -240,7 +241,7 @@ They were chosen by first searching GitHub for \texttt{fspec} occurrences, and
 manually choosing the first few dozen results, manually keeping only projects
 seemed to have official releases.
 Figure~\ref{fspectable} summarizes these findings. We have included the project
-names and our scratch notes as Appendix~\label{appendix1}.
+names and our scratch notes as Appendix~\ref{appendix1}.
 
 We also searched for negative examples of \texttt{fspec} usage---that is, occurrences
 of higher-order functions with specs that did not use \texttt{fspec}---by searching for
@@ -248,7 +249,7 @@ both \texttt{fdef} and
 \texttt{ifn?}~\footnote{\texttt{https://github.com/search?utf8=\%E2\%9C\%93\&q=ifn\%3F+fdef+language\%3Aclojure\&type=Code}}, 
 the flat contract for Clojure functions.
 We selected 17 projects using a similar method via a GitHub search.
-Appendix~\label{appendix2} contains the projects and our scratch notes for this experiment.
+Appendix~\ref{appendix2} contains the projects and our scratch notes for this experiment.
 
 \subsection{Experiment 1: Frequency of \texttt{fspec}}
 \label{experiment1}
@@ -268,7 +269,7 @@ Appendix~\label{appendix2} contains the projects and our scratch notes for this 
   \tabitem
   Total occurrences in heterogeneous map spec & 40 (97\%) & 2 \\
   \tabitem
-  Total occurrences in homogenous map spec & 1 (3\%) & 0 \\
+  Total occurrences in homogeneous map spec & 1 (3\%) & 0 \\
 
 \end{tabular}
 \caption{Function specs in practice, in 18 open source projects sourced from GitHub that utilized \texttt{fspec}. }
@@ -278,7 +279,7 @@ Appendix~\label{appendix2} contains the projects and our scratch notes for this 
 Our first investigation concentrated on projects that use \texttt{fspec}.
 We chose 18 open source projects and manually investigated their usage of spec.
 
-To guage how \texttt{fspec}s are used in practice, we divided their occurrences
+To gauge how \texttt{fspec}s are used in practice, we divided their occurrences
 into several categories. 
 Figure~\ref{fspectable} presents the results.
 
@@ -294,7 +295,7 @@ with 18\% in the return position.
 
 Second, we measure the frequency of \texttt{fspec} in a hash-map spec.
 Of the occurrences of \texttt{fspec} in map specifications, 
-we found a strong preference for using heterogenous map specs (97\%),
+we found a strong preference for using heterogeneous map specs (97\%),
 with the rest being homogeneous maps.
 If \texttt{fspec} occurs in a nested map, each map spec occurrence is counted.
 Similar to the previous experiment, the flat function contract \texttt{ifn?} was rarely used 
@@ -358,7 +359,7 @@ semantics of \texttt{fspec} would be welcomed by spec users.
   \tabitem
   Total occurrences in heterogeneous map spec & 0 & 67 (39\%) \\
   \tabitem
-  Total occurrences in homogenous map spec & 0 & 106 (61\%)\\
+  Total occurrences in homogeneous map spec & 0 & 106 (61\%)\\
 
 \end{tabular}
 \caption{Flat function specs in practice, in 17 open source projects sourced from GitHub that utilized \texttt{ifn?}.
@@ -386,7 +387,7 @@ avoid \texttt{fspec}'s generative testing semantics.
 
 Our goal in this section was to inform our decisions for when to generate \texttt{fspec}
 annotations in our automatic spec annotation tool.
-We surveyed open source projects primarily via GitHub by measuring instances of two kinds of projects:
+We surveyed open source projects via GitHub by measuring instances of two kinds of projects:
 those that primarily used \texttt{fspec}, and those that primarily used \texttt{ifn?}.
 
 Our experiments yielded many interesting insights. Even using broad measurements like
@@ -394,14 +395,14 @@ GitHub searches and CrossClj project references,
 we consistently found other common spec features were used roughly an order of
 magitude more than \texttt{fspec} (Figure~\ref{frequencybargraphs}).
 
-However, we still investigated how programmers use \texttt{fspec} (Section~\label{experiment1}).
+However, we still investigated how programmers use \texttt{fspec} (Section~\ref{experiment1}).
 In the projects that primarily used \texttt{fspec} for first-class function specs,
 we found several instances of programmers enjoying the expressive documentation
 of \texttt{fspec}, but avoiding its generative testing semantics in creative ways.
 Sometimes \texttt{fspec}s commented out and replaced with \texttt{ifn?}, implying
 spec might benefit from more control over \texttt{fspec}'s testing semantics.
 
-Our second experiment (Section~\label{experiment2}) measured how programmers combined
+Our second experiment (Section~\ref{experiment2}) measured how programmers combined
 spec with \texttt{ifn?}.
 Interestingly, none of the 17 projects we selected used \texttt{fspec}---programmers
 seem divided in strong preferences for \texttt{ifn?} and \texttt{fspec}, with
@@ -421,19 +422,19 @@ and \texttt{ifn?} was 10\% of the time (Figure~\ref{ifntable}).
 One difference we found was \texttt{ifn?} occurs with a high correlation in
 a map spec (92\% of the time), while \texttt{fspec} occurred in a map spec
 only 51\% of the time.
-However, \texttt{fspec} occurred much more often in heterogenous map specs
-(97\% of occurrences in map specs were heterogenous), while \texttt{ifn?}
-only occurred in heterogenous maps 39\% of the time.
+However, \texttt{fspec} occurred much more often in heterogeneous map specs
+(97\% of occurrences in map specs were heterogeneous), while \texttt{ifn?}
+only occurred in heterogeneous maps 39\% of the time.
 Heterogeneous maps in Clojure are used like records or structs in other
 languages~\cite{bonnaire2016practical}, so the appeal of combining
-\texttt{fspec} with heterogenous maps is similar to giving precise annotations
+\texttt{fspec} with heterogeneous maps is similar to giving precise annotations
 to record or struct fields.
 
 The lack of polymorphism in spec coupled with the frequency of polymorphic functions
 in Clojure seems to be a strong reason to prefer \texttt{ifn?} in many situations.
 We found \texttt{ifn?} was often used to avoid ``any to any'' function
 specs, which would otherwise use the generator for \texttt{any?} to generatively test
-the function value. This is innapropriate for many common variants on polymorphic functions like
+the function value. This is inappropriate for many common variants on polymorphic functions like
 \texttt{map}, \texttt{filter}, and \texttt{reduce}
 and we found several examples in our experiments that support this view
 (see occurrences of ``polymorphic'' in Appendix~\ref{appendix2}).
@@ -445,7 +446,7 @@ tool? At the very least, it tells us there is no simple ``fits all'' behavior---
 preferences were in (at least) two distinct camps.
 This implies that the tool should have some customizability between preferring
 \texttt{fspec} and \texttt{ifn?}, but which should be the default?
-Should the tool prefer more expressive, but possibily incorrect specs, over less
+Should the tool prefer more expressive, but possibly incorrect specs, over less
 expressive but specs that ``just work''?
 
 I don't think there is a single definitive answer---rather each occurrence of \texttt{fspec}
