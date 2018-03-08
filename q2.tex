@@ -394,18 +394,63 @@ GitHub searches and CrossClj project references,
 we consistently found other common spec features were used roughly an order of
 magitude more than \texttt{fspec} (Figure~\ref{frequencybargraphs}).
 
+However, we still investigated how programmers use \texttt{fspec} (Section~\label{experiment1}).
+In the projects that primarily used \texttt{fspec} for first-class function specs,
+we found several instances of programmers enjoying the expressive documentation
+of \texttt{fspec}, but avoiding its generative testing semantics in creative ways.
+Sometimes \texttt{fspec}s commented out and replaced with \texttt{ifn?}, implying
+spec might benefit from more control over \texttt{fspec}'s testing semantics.
 
+Our second experiment (Section~\label{experiment2}) measured how programmers combined
+spec with \texttt{ifn?}.
+Interestingly, none of the 17 projects we selected used \texttt{fspec}---programmers
+seem divided in strong preferences for \texttt{ifn?} and \texttt{fspec}, with
+\texttt{fspec} users using \texttt{ifn?} only occasionally to work around
+\texttt{fspec}'s testing semantics.
 
-Clojure.spec instrumentation does not check the return values from functions.
+A unique feature of spec's runtime instrumentation of \texttt{fdef}s is that
+return values are not checked. Since we predicted programmers might have
+issues with \texttt{fspec}'s generative testing semantics, we were interested
+if \texttt{fspec}'s were more frequent than usual in the return position
+of \texttt{fdef} (where these semantics would be implicitly suppressed).
+In our investigation, we found no strong evidence that programmers preferred
+\texttt{fspec} over \texttt{ifn?} in the return position---when they occurred in \texttt{fdef} forms,
+\texttt{fspec} was in the return position 18\% of the time (Figure~\ref{fspectable}),
+and \texttt{ifn?} was 10\% of the time (Figure~\ref{ifntable}).
 
-"Note that the :ret and :fn specs are not checked with instrumentation as validating the implementation should occur at testing time."
+One difference we found was \texttt{ifn?} occurs with a high correlation in
+a map spec (92\% of the time), while \texttt{fspec} occurred in a map spec
+only 51\% of the time.
+However, \texttt{fspec} occurred much more often in heterogenous map specs
+(97\% of occurrences in map specs were heterogenous), while \texttt{ifn?}
+only occurred in heterogenous maps 39\% of the time.
+Heterogeneous maps in Clojure are used like records or structs in other
+languages~\cite{bonnaire2016practical}, so the appeal of combining
+\texttt{fspec} with heterogenous maps is similar to giving precise annotations
+to record or struct fields.
 
 The lack of polymorphism in spec coupled with the frequency of polymorphic functions
 in Clojure seems to be a strong reason to prefer \texttt{ifn?} in many situations.
-We found \texttt{ifn?} was often used to avoid a \texttt{(fspec :args (cat :x any?))}
-spec, which would otherwise use the generator for \texttt{any?} to generatively test
-the function value. For common variants on polymorphic functions like
-\texttt{map}, \texttt{filter}, and \texttt{reduce}, these semantics are unlikely
-to be useful, and we found several examples in our experiments that support this view.
+We found \texttt{ifn?} was often used to avoid ``any to any'' function
+specs, which would otherwise use the generator for \texttt{any?} to generatively test
+the function value. This is innapropriate for many common variants on polymorphic functions like
+\texttt{map}, \texttt{filter}, and \texttt{reduce}
+and we found several examples in our experiments that support this view
+(see occurrences of ``polymorphic'' in Appendix~\ref{appendix2}).
 
 % how does no polymorphism interact with fspec semantics? are they more useful together?
+
+To tie back our investigation, what does this tell us about programmer preferences in an automatic spec annotation
+tool? At the very least, it tells us there is no simple ``fits all'' behavior---we found
+preferences were in (at least) two distinct camps.
+This implies that the tool should have some customizability between preferring
+\texttt{fspec} and \texttt{ifn?}, but which should be the default?
+Should the tool prefer more expressive, but possibily incorrect specs, over less
+expressive but specs that ``just work''?
+
+I don't think there is a single definitive answer---rather each occurrence of \texttt{fspec}
+comes with its own context and tradeoffs. Whether it occurs in the arguments or return of
+an \texttt{fdef}, in a heterogeneous or homogeneous map, or even nested in another \texttt{fspec}
+are relevant contextual information that the default behavior of the tool should take
+into account. The varied and subtle results of this investigation support the conclusion
+that the tool's behavior should probably itself be varied and subtle.
