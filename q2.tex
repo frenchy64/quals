@@ -162,6 +162,11 @@ and for \texttt{fspec}
 yield around 600 results.
 Searches were quite noisy, so less actual examples of these forms were found.
 
+As a baseline, we searched for several common spec forms.
+The spec \texttt{def} form for defining spec aliases found around 4,400 results.
+The spec \texttt{keys} form for heterogeneous maps found around 3,500 results.
+All of these numbers are compared in Figure~\ref{frequencybargraphs}.
+
 CrossClj function/macro cross-links were used to find occurrences of spec idioms.
 From the latest index (updated February 20th 2018)
 \texttt{fdef} occurs in 721 top-level forms over 83 
@@ -182,10 +187,50 @@ forms~\footnote{\texttt{https://crossclj.info/fun/clojure.spec.alpha/def.html}}.
 The latter number is too low---CrossClj reports, for example, the \texttt{clj-time}
 library only has 2 occurrences of \texttt{s/def}, but it actually has 7 occurrences.
 
+\begin{figure}
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.5\textwidth,
+  symbolic x coords={s/def,s/keys,s/fdef,s/fspec},
+    ylabel=Search Results,
+    xlabel=GitHub,
+    xtick=data]
+    \addplot[ybar,fill=blue] coordinates {
+         (s/def,4439)
+         (s/keys,3522)
+         (s/fdef,1167)
+         (s/fspec,286)
+                   };
+\end{axis}
+\end{tikzpicture}
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.5\textwidth,
+    symbolic x coords={s/def,s/keys,s/fdef,s/fspec},
+    ylabel=Projects using,
+    xlabel=CrossClj,
+    xtick=data]
+    \addplot[ybar,fill=blue] coordinates {
+         (s/def,125)
+         (s/keys,87)
+         (s/fdef,84)
+         (s/fspec,8)
+                   };
+\end{axis}
+\end{tikzpicture}
+\caption{Left, the number of results for GitHub searches about spec forms.
+Right, the number of projects on CrossClj that use spec features.
+  Searches for \texttt{ifn?} are omitted because
+  it has been used as a common predicate since before 2009 (spec was released in 2017).
+  }
+  \label{frequencybargraphs}
+\end{figure}
+
 We did not notice such an error in the counts for \texttt{fspec} and \texttt{fdef}, but
 this error reduces confidence on the exact numbers. Interestingly, the \emph{relative}
 numbers of projects using these forms matches our intuition---\texttt{fspec} occurs
-10 times less often than \texttt{fdef}, and \texttt{fdef} occurs about half as often as \texttt{s/def}.
+10 times less often than \texttt{fdef}, and \texttt{fdef} occurs about half as often as \texttt{s/def}
+(see plot in Figure~\ref{frequencybargraphs}).
 Still, these numbers should be treated with suspicion.
 
 \subsubsection{Project Samples}
@@ -202,14 +247,11 @@ of higher-order functions with specs that did not use \texttt{fspec}---by search
 both \texttt{fdef} and 
 \texttt{ifn?}~\footnote{\texttt{https://github.com/search?utf8=\%E2\%9C\%93\&q=ifn\%3F+fdef+language\%3Aclojure\&type=Code}}, 
 the flat contract for Clojure functions.
-Several dozen candidates were selecting using a similar method via GitHub search.
+We selected 17 projects using a similar method via a GitHub search.
 Appendix~\label{appendix2} contains the projects and our scratch notes for this experiment.
 
-\subsection{What spec features are used in real systems}
-
-\subsection{How precise are spec annotations in practice?}
-
-\subsection{How frequently are higher-order functions annotated with higher-order specs? Why?}
+\subsection{Experiment 1: Frequency of \texttt{fspec}}
+\label{experiment1}
 
 \begin{figure*}[t]
 
@@ -298,7 +340,8 @@ semantics of \texttt{fspec} would be welcomed by spec users.
 % - depth 3 fspec's
 % - depth 2 fspec's + terminating ifn?
 
-\subsection{How frequently are higher-order functions not annotated with higher-order specs?}
+\subsection{Experiment 2: Frequency of \texttt{ifn?}}
+\label{experiment2}
 
 \begin{figure*}[t]
 
@@ -319,17 +362,50 @@ semantics of \texttt{fspec} would be welcomed by spec users.
 
 \end{tabular}
 \caption{Flat function specs in practice, in 17 open source projects sourced from GitHub that utilized \texttt{ifn?}.
-Note, the 106 homogeneous map spec occurrences were sourced from only 3 projects, one project contributing the maximum 93 occurrences.
-Heterogeneous map specs occurrences were from 7 projects, with maximum 30 occurrences in one project.
+The 106 homogeneous map spec occurrences were sourced from only 3 of the projects, one project contributing the maximum 93 occurrences.
+Heterogeneous map specs occurrences were from 7 of the projects, with maximum 30 occurrences in one project.
 }
-\label{fspectable}
+\label{ifntable}
 \end{figure*}
 
+In our second experiment, we measured the frequency of \texttt{ifn?} in 17 open source projects.
+The results are summarised in Figure~\ref{ifntable}.
+
+Similar to our first experiment, occurrences of \texttt{ifn?} were mostly in the argument
+positions in \texttt{fdef} (90\%).
+The data for \texttt{ifn?} occurrences in map specs is somewhat skewed, since one project
+contributed over half of the occurrences. However, even without taking that project into account,
+around half of all the \texttt{ifn?} occurrences were found in map specs.
+
+One striking divide we noticed was the obvious preference for either \texttt{ifn?} or \texttt{fspec}
+per project. None of the projects that primarily used \texttt{ifn?} used \texttt{fspec} even once.
+In the first experiment, projects that used \texttt{fspec} used \texttt{ifn?} rarely---mostly to
+avoid \texttt{fspec}'s generative testing semantics.
 
 \subsection{Conclusions}
+
+Our goal in this section was to inform our decisions for when to generate \texttt{fspec}
+annotations in our automatic spec annotation tool.
+We surveyed open source projects primarily via GitHub by measuring instances of two kinds of projects:
+those that primarily used \texttt{fspec}, and those that primarily used \texttt{ifn?}.
+
+Our experiments yielded many interesting insights. Even using broad measurements like
+GitHub searches and CrossClj project references,
+we consistently found other common spec features were used roughly an order of
+magitude more than \texttt{fspec} (Figure~\ref{frequencybargraphs}).
+
+
 
 Clojure.spec instrumentation does not check the return values from functions.
 
 "Note that the :ret and :fn specs are not checked with instrumentation as validating the implementation should occur at testing time."
+
+The lack of polymorphism in spec coupled with the frequency of polymorphic functions
+in Clojure seems to be a strong reason to prefer \texttt{ifn?} in many situations.
+We found \texttt{ifn?} was often used to avoid a \texttt{(fspec :args (cat :x any?))}
+spec, which would otherwise use the generator for \texttt{any?} to generatively test
+the function value. For common variants on polymorphic functions like
+\texttt{map}, \texttt{filter}, and \texttt{reduce}, these semantics are unlikely
+to be useful, and we found several examples in our experiments that support this view.
 
 % how does no polymorphism interact with fspec semantics? are they more useful together?
