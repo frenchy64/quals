@@ -20,7 +20,7 @@ Then, we extend \lambdacs{} to support
 \texttt{fspec} function contracts, and call this final model \lambdacsf{}
 (syntax defined in Figure~\ref{clojurespechof-grammar}).
 
-We define the small-step reduction rules for each language, using contexts.
+We define the small-step reduction rules ($\rightarrow$) for each language, using contexts.
 Figure~\ref{arrowv} defines the reduction rules for 
 the base language \lambdac{}---it does not include any spec features.
 Figure~\ref{arrowvspec} defines the reduction rules for 
@@ -91,9 +91,23 @@ Original-form: (assert-spec boolean? (FSpec () zero? 0))
 Stuck-form: (assert-spec boolean? (FSpec () zero? 0))
 \end{verbatim}
 
-%\subsection{Redex model}
+\subsection{Notes on Redex model}
 
-%We model \lambdac{} as a Redex language called \emph{Clojure}.
+Caching was disabled for the Redex model because it interfered with generative testing.
+For example, the result of \texttt{(gen-spec number?)} was cached, so generative testing coverage
+was very poor.
+
+The model rendered in this paper can be found at:
+\begin{itemize}
+\item \texttt{https://github.com/frenchy64/quals/blob/master/redex/clj2.rkt}.
+\end{itemize}
+
+For experimentation, the same model, but based on the Eval-Apply-Continue machine
+can be found at:
+\begin{itemize}
+\item
+ \texttt{https://github.com/frenchy64/quals/blob/master/redex/clj.rkt}.
+\end{itemize}
 
 \begin{figure*}
 \fbox{
@@ -118,7 +132,7 @@ Stuck-form: (assert-spec boolean? (FSpec () zero? 0))
 \fbox{
   \includegraphics[]{redex/clojurespec-grammar.pdf}
 }
-\caption{Syntax of $\lambda c_s$ (extending $\lambda c$).
+\caption{Syntax of $\lambda c_s$ (extending $\lambda c$, Figure~\ref{clojure-grammar}).
   We add the \texttt{assert-spec} form that takes an expression and a spec
   and checks the expression evaluates to a value conforming to the spec.
   We restrict specs to just predicates \texttt{P}.}
@@ -130,7 +144,7 @@ Stuck-form: (assert-spec boolean? (FSpec () zero? 0))
 \fbox{
   \includegraphics[]{redex/clojurespechof-grammar.pdf}
 }
-\caption{Syntax of $\lambda c_s^f$ (extending $\lambda c_s$).
+\caption{Syntax of $\lambda c_s^f$ (extending $\lambda c_s$, Figure~\ref{clojurespec-grammar}).
   We add two forms of \texttt{fspec}s---the natural number represents how
   many times to generatively test a function value.
   }
@@ -158,7 +172,7 @@ Stuck-form: (assert-spec boolean? (FSpec () zero? 0))
 \fbox{
   \includegraphics[]{redex/arrowvspec.pdf}
 }
-\caption{Small-step reduction relation in $\lambda c_s$ (extending $\lambda c$).
+\caption{Small-step reduction relation in $\lambda c_s$ (extending $\lambda c$, Figure~\ref{arrowv}).
   \texttt{gen-spec} takes a spec and generates a value conforming to that spec
   via the \texttt{gen-spec*} metafunction.
   We define \texttt{assert-spec} with support for 
@@ -174,9 +188,17 @@ for \texttt{fdef} using traditional proxy checking semantics, and flat predicate
 \fbox{
   \includegraphics[]{redex/arrowvspec-hof.pdf}
 }
-  \caption{Small-step reduction relation for $\lambda c_{s}^{f}$ (extending $\lambda c_s$)
+  \caption{Small-step reduction relation for $\lambda c_{s}^{f}$ (extending $\lambda c_s$, Figure~\ref{arrowvspec})
   \texttt{gen-spec} takes a spec and generates a value conforming to that spec
   via the \texttt{gen-spec*-hof} metafunction (which extends \texttt{gen-spec*} in Figure~\ref{arrowvspec}).
+	Since we add \texttt{fspec}s, \texttt{gen-spec*-hof} can generate values conforming to \texttt{fspec}s
+(dummy functions that have the expected number of parameters, and generate their return values).
+\texttt{assert-fspec-init} initializes \texttt{FSpec} with an initial number of generations.
+\texttt{assert-fspec-gen}  and
+\texttt{assert-fspec-stop} handle the actual generative testing, with 
+\texttt{assert-rec-fspec-stop} supporting recursive functions.
+Finally, \texttt{assert-fspec-nonf} handles non-function values that are expected to
+conform to an \texttt{fspec}.
   }
   \label{arrowvspec-hof}
 \end{figure*}

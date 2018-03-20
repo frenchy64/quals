@@ -12,7 +12,8 @@ were to become part of a (refinement) type system, how powerful would
 it need to be?
 \end{verbatim}
 
-\pagebreak
+We begin by analyzing our approach to dynamic tracing and type inference
+for Typed Clojure's dynamic type inference.
 
 \subsection{Dynamic tracing Performance}
 
@@ -22,7 +23,8 @@ known techniques from the higher-order contract checking literature.
 \subsubsection{Space complexity of dynamic tracing}
 
 The space complexity of dynamic tracing in Typed Clojure is similar
-to proxy-based higher-order contract checking.
+to proxy-based higher-order contract checking (so, reasonable, with
+some constant overhead).
 
 Map and function wrappers are space-efficient with respect to the stack, with
 redundant wrapper of the same type collapsing to at most one level of wrapping.
