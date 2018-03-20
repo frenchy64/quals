@@ -5,38 +5,74 @@
 (require racket/format)
 (require test-engine/racket-tests)
 (require redex/pict)
+(require pict)
+(require unstable/gui/redex)
+
+(define mf-font "Latin Modern Mono")
+(define math-font "Latin Modern Math")
+(define lit-font "Latin Modern Mono Caps")
+(default-font-size 10)
+(label-font-size 10)
+(metafunction-font-size 10)
+(non-terminal-style "Latin Modern Math")
+(non-terminal-subscript-style (cons 'subscript "Latin Modern Math"))
+(non-terminal-superscript-style (cons 'superscript "Latin Modern Math"))
+(default-style "Latin Modern Math")
+(literal-style "Latin Modern Math")
+(paren-style "Latin Modern Math")
+(grammar-style "Latin Modern Math")
+(rule-pict-style 'horizontal)
+
+(add-atomic-rewriters!
+ 'CNST    (λ () (text "C" math-font (default-font-size)))
+ 'P?    (λ () (text "P" math-font (default-font-size)))
+ 'M    (λ () (text "E" math-font (default-font-size)))
+ '+      (λ () (text "+" mf-font (default-font-size)))
+ '-      (λ () (text "-" mf-font (default-font-size)))
+ '*      (λ () (text "*" mf-font (default-font-size)))
+ 'nil      (λ () (text "nil" math-font (default-font-size)))
+ 'true      (λ () (text "true" math-font (default-font-size)))
+ 'false      (λ () (text "false" math-font (default-font-size)))
+ 'C (lambda () (text "ℂ" mf-font (default-font-size)))
+ 'NT (lambda () (text "ℤ" mf-font (default-font-size)))
+ 'VA (lambda () (text "V" math-font (default-font-size)))
+ 'V (lambda () (hbl-append (text "V" math-font (default-font-size))
+                           (text "e" (cons 'superscript math-font) (default-font-size))))
+ 'SP (lambda () (text "𝕊" math-font (default-font-size)))
+ 
+ )
+
+
 
 ;; for generators
 (caching-enabled? #f)
 
 (define-language Clojure
-  ; simple expressions with no free variables
-  (CNST ::= N O B NIL H ERR)
   ;; expressions
   (M ::=
-     CNST L LN X
+     CNST L X
      (M M ...)
      (if M M M))
+  ; simple expressions with no free variables
+  (CNST ::= N O B nil H ERR)
   (X ::= variable-not-otherwise-mentioned)
   (ERR ::= (error any any ...))
-  (L ::= (fn [X ...] M))
-  (LN ::= (fn X [X ...] M))
-  (FNVALUE ::= O L LN)
-  (NONFNVALUE ::= B H NIL N)
+  (L ::= (fn [X ...] M) (fn X [X ...] M))
+  (NONFNV ::= B H nil N)
   ; non-error values
-  (NONERRV ::= FNVALUE NONFNVALUE)
-  (V ::= NONERRV ERR)
-  (H ::= (HashMap (NONERRV NONERRV) ...))
+  (VA ::= O L NONFNV)
+  (V ::= VA ERR)
+  (H ::= (HashMap (VA VA) ...))
   (B ::= true false)
-  (NIL ::= nil)
   (N ::= number)
-  (O ::= O1 O2 O3)
+  (NT ::= natural)
+  (O ::= P?
+     inc dec 
+     + * dissoc
+     assoc get)
   (P? ::= zero? number? boolean? nil?)
-  (O1 ::= inc dec P?)
-  (O2 ::= + * dissoc)
-  (O3 ::= assoc get)
   ; context
-  (C ::= hole (if C M M) (NONERRV ... C M ...)))
+  (C ::= hole (if C M M) (VA ... C M ...)))
 
 (define-language REDEX)
 (define-judgment-form REDEX
@@ -120,7 +156,7 @@
 
 (define-judgment-form Clojure
   #:mode (δ I O)
-  #:contract (δ (O NONERRV ...) V)
+  #:contract (δ (O VA ...) V)
   ;; TODO dynamic checks for map-ops
   [(δ (dissoc H V_k) ,(remove-key (term H) (term V_k)))]
   [(δ (assoc H V_k V_v) (ext H (V_k V_v)))]
@@ -311,77 +347,74 @@
               #t)
   )
 
+(define (same-length? l1 l2)
+  (equal? (length l1)
+          (length l2)))
+
+(define (top-level-hole? h)
+  (equal? (term hole) h))
+
+(define (arg-mismatch-msg xs args f)
+  (list (string-append
+         "Expected " (~a (length xs))
+         " arguments, but found "
+         (~a (length args)))
+        (string-append
+         "Form: " (~a (list* f
+                             args)))))
+
 ;; -->v
 ;; Clojure reduction relation
 (define -->v
   (reduction-relation
    Clojure
    #:domain M
-   [--> (in-hole C X)
-        (error unknown-variable X)
-        x-error]
-   [--> (NONFNVALUE NONERRV ...) (error bad-application)
-        β-non-function]
-
-   [--> (in-hole C ((fn (X ...) M) NONERRV ...))
-        (in-hole C (subst* M ([X ↦ NONERRV] ...)))
+   [--> (in-hole C ((fn (X ...) M) VA ...))
+        (in-hole C (subst* M ([X ↦ VA] ...)))
         (judgment-holds (unique (X ...)))
-        (side-condition (equal? (length (term (X ...)))
-                                (length (term (NONERRV ...)))))
-
+        (side-condition (same-length? (term (X ...)) (term (VA ...))))
         β]
-   [--> (in-hole C ((fn [X ...] M) NONERRV ...))
-        (error argument-mismatch
-               ,(string-append
-                 "Expected " (~a (length (term (X ...))))
-                 " arguments, but found "
-                 (~a (length (term (NONERRV ...)))))
-               ,(string-append
-                 "Form: " (~a (list* (term (fn [X ...] M))
-                                     (term (NONERRV ...))))))
-        (judgment-holds (unique (X ...)))
-        (side-condition (not (equal? (length (term (X ...)))
-                                     (length (term (NONERRV ...))))))
-        β-mismatch]
-
-   [--> (in-hole C ((fn X_rec [X ...] M) NONERRV ...))
+   [--> (in-hole C ((fn X_rec [X ...] M) VA ...))
         (in-hole C (subst* M ([X_rec ↦ (fn X_rec [X ...] M)]
-                              [X ↦ NONERRV] ...)))
+                              [X ↦ VA] ...)))
         (judgment-holds (unique (X_rec X ...)))
-        (side-condition (equal? (length (term (X ...)))
-                                (length (term (NONERRV ...)))))
-
+        (side-condition (same-length? (term (X ...)) (term (VA ...))))
         rec-β]
-   [--> (in-hole C ((name f (fn X_f [X ...] M)) NONERRV ...))
-        (error argument-mismatch
-               ,(string-append
-                 "Expected " (~a (length (term (X ...))))
-                 " arguments, but found "
-                 (~a (length (term (NONERRV ...)))))
-               ,(string-append
-                 "Form: " (~a (list* (term (fn [X ...] M))
-                                     (term (NONERRV ...))))))
-        (side-condition (not (equal? (length (term (X ...)))
-                                     (length (term (NONERRV ...))))))
-        rec-β-mismatch]
-
-   [--> (in-hole C (if NONERRV M_1 M_2))
+   
+   [--> (in-hole C (if VA M_1 M_2))
         (in-hole C M_1)
-        (side-condition (truthy? (term NONERRV)))
+        (side-condition (truthy? (term VA)))
         if-t]
-   [--> (in-hole C (if NONERRV M_1 M_2))
+   [--> (in-hole C (if VA M_1 M_2))
         (in-hole C M_2)
-        (side-condition (not (truthy? (term NONERRV))))
+        (side-condition (not (truthy? (term VA))))
         if-f]
-   [--> (in-hole C (O NONERRV ...))
+   [--> (in-hole C (O VA ...))
         (in-hole C V_1)
-        (judgment-holds (δ (O NONERRV ...) V_1))
+        (judgment-holds (δ (O VA ...) V_1))
         δ]
    [--> (in-hole C ERR)
         ERR
         ;; prevent infinite top expansions of top-level errors
-        (side-condition (not (equal? (term hole) (term C))))
-        error]))
+        (side-condition (not (top-level-hole? (term C))))
+        error]
+   [--> (in-hole C X)
+        (error unknown-variable X)
+        x-error]
+   [--> (NONFNV VA ...) (error bad-application)
+        β-non-function]
+   [--> (in-hole C ((fn [X ...] M) VA ...))
+        (error argument-mismatch
+               ,(arg-mismatch-msg (term (X ...)) (term (VA ...)) (term (fn [X ...] M))))
+        (judgment-holds (unique (X ...)))
+        (side-condition (not (same-length? (term (X ...)) (term (VA ...)))))
+        β-mismatch]
+   [--> (in-hole C ((name f (fn X_f [X ...] M)) VA ...))
+        (error argument-mismatch
+               ,(arg-mismatch-msg (term (X ...)) (term (VA ...)) (term (fn [X ...] M))))
+        (side-condition (not (same-length? (term (X ...)) (term (VA ...)))))
+        rec-β-mismatch]
+   ))
 
 (module+ test
   ;; test for lambda (no reduction)
@@ -432,31 +465,26 @@
 (define (random-int)
   (random min-random-int max-random-int))
 
-;; not defined in ClojureSpecHOF because we cannot
-;; generate FSpec's (yet)
-(define-syntax-rule (define-gen-spec*-ext lang name . args)
-  (...
-   (define-metafunction lang
-     name : SP -> V
-     [(name number?) ,(random-int)]
-     [(name zero?) 0]
-     [(name boolean?) ,(random-ref '(true false))]
-     [(name nil?) nil]
-     . args)))
+(define-metafunction ClojureSpec
+  gen-spec* : SP -> V
+  [(gen-spec* number?) ,(random-int)]
+  [(gen-spec* zero?) 0]
+  [(gen-spec* boolean?) ,(random-ref '(true false))]
+  [(gen-spec* nil?) nil])
 
-(define-gen-spec*-ext ClojureSpec gen-spec*)
+(define (spec-violation-msg p v)
+  (string-append
+   "Spec violation: "
+   "Expected spec " (~a p)
+   ", actual value " (~a v)))
 
-
-
-(define-syntax-rule (-->vspec/multi lang gspec* . args)
-  (...
-   (extend-reduction-relation
-    -->v lang
+(define -->vspec
+  (extend-reduction-relation
+    -->v ClojureSpec
     #:domain M
 
     ;; GenSpec
-    (--> (in-hole C (gen-spec SP))
-         (in-hole C (gspec* SP))
+    (--> (in-hole C (gen-spec SP)) (in-hole C (gen-spec* SP))
          gen-spec)
    
     ;; AssertSpec
@@ -479,71 +507,75 @@
                          SP_r)))
          assert-rec-deffspec)
 
-    (--> (in-hole C (assert-spec NONERRV P?))
-         (in-hole C
-                  (if (P? NONERRV)
-                      NONERRV
-                      (error spec-error
-                             ,(string-append
-                               "Spec violation: "
-                               "Expected spec " (~a (term P?))
-                               ", actual value " (~a (term NONERRV))))))
-         assert-spec-P?)
-    .
-    args)))
-
-(define -->vspec
-  (-->vspec/multi ClojureSpec gen-spec*))
+    (--> (in-hole C (assert-spec VA P?))
+         (in-hole C (if (P? VA)
+                        VA
+                        (error spec-error
+                               ,(spec-violation-msg (term P?) (term VA)))))
+         assert-spec-P?)))
 
 (define-extended-language ClojureSpecHOF ClojureSpec
-  (SP ::= .... (FSpec (SP ...) SP) (FSpec (SP ...) SP natural)))
+  (SP ::= .... (FSpec (SP ...) SP) (FSpec (SP ...) SP NT)))
 
-(define-gen-spec*-ext ClojureSpecHOF gen-spec*-hof
+(define (dummy-params terms)
+  (map (lambda (i) (string->symbol
+                    (string-append
+                     "x"
+                     (number->string i))))
+       (range (length terms))))
+
+(define-metafunction/extension gen-spec* ClojureSpecHOF
+  gen-spec*-hof : SP -> V
   [(gen-spec*-hof (FSpec (SP_a ...) SP_r))
-   (fn ,(map (lambda (i) (string->symbol (string-append "x" (number->string i))))
-             (range (length (term (SP_a ...)))))
+   
        ;; TODO check arg specs
-       (gen-spec*-hof SP_r))])
+   (fn ,(dummy-params (term (SP_a ...))) (gen-spec*-hof SP_r))])
+
+(define (nonf-spec-error-msg v)
+  (string-append
+   "Spec expected a function but found "
+   (~a v)))
+
+(define (do e1 e2)
+  (term ((fn [,(gensym 'do)]
+             ,e2)
+         ,e1)))
 
 (define -->vspec-hof
-  (-->vspec/multi
-   ClojureSpecHOF gen-spec*-hof
+  (extend-reduction-relation
+    -->vspec ClojureSpecHOF
+    #:domain M
+    
+    ;; GenSpec
+    (--> (in-hole C (gen-spec SP))
+         (in-hole C (gen-spec*-hof SP))
+         gen-spec)
    ; prepare FSpec gen-count
-   (--> (in-hole C (assert-spec NONERRV
-                                (FSpec (SP_a ...) SP_r)))
-        (in-hole C (assert-spec NONERRV
-                                (FSpec (SP_a ...) SP_r ,ngenerations)))
-        assert-fspec-init-gen-count)
+   (--> (in-hole C (assert-spec VA (FSpec (SP_a ...) SP_r)))
+        (in-hole C (assert-spec VA (FSpec (SP_a ...) SP_r ,ngenerations)))
+        assert-fspec-init)
 
-   (--> (in-hole C
-                 (assert-spec (name f (fn [X ...] M))
-                              (FSpec (SP_a ...) SP_r 0)))
+   (--> (in-hole C (assert-spec (name f (fn [X ...] M)) (FSpec (SP_a ...) SP_r 0)))
         (in-hole C f)
         assert-fspec-stop)
  
-   (--> (in-hole C (assert-spec (name f (fn [X ...] M))
-                                (FSpec (SP_a ...) SP_r natural)))
-        (in-hole C
-                 ((fn [,(gensym 'do)]
-                      (assert-spec f (FSpec (SP_a ...) SP_r ,(sub1 (term natural)))))
-                  (assert-spec (f (gen-spec SP_a) ...) SP_r)))
-        (side-condition (< 0 (term natural)))
+   (--> (in-hole C (assert-spec (name f (fn [X ...] M)) (FSpec (SP_a ...) SP_r NT)))
+        (in-hole C ,(do (term (assert-spec (f (gen-spec SP_a) ...) SP_r))
+                        (term (assert-spec f (FSpec (SP_a ...) SP_r ,(sub1 (term NT)))))))
+        (side-condition (< 0 (term NT)))
         assert-fspec-gen)
 
-   (--> (in-hole C (assert-spec (name f (fn nme [X ...] M))
-                                (FSpec (SP_a ...) SP_r natural)))
-        (in-hole C ((fn [,(gensym 'do)]
-                        (assert-spec f (FSpec (SP_a ...) SP_r ,(sub1 (term natural)))))
-                    (assert-spec (f (gen-spec SP_a) ...) SP_r)))
-        (side-condition (< 0 (term natural)))
+   (--> (in-hole C (assert-spec (name f (fn nme [X ...] M)) (FSpec (SP_a ...) SP_r NT)))
+        (in-hole C ,(do (term (assert-spec (f (gen-spec SP_a) ...) SP_r))
+                        (term (assert-spec f (FSpec (SP_a ...) SP_r ,(sub1 (term NT)))))))
+        (side-condition (< 0 (term NT)))
         assert-rec-fspec-gen)
 
-   (--> (in-hole C (assert-spec NONFNVALUE
-                                (FSpec (SP_a ...) SP_r natural)))
+   (--> (in-hole C (assert-spec NONFNV
+                                (FSpec (SP_a ...) SP_r NT)))
         (error spec-error
-               ,(string-append
-                 "Spec expected a function but found " (~a (term NONFNVALUE))))
-        assert-fspec-non-function)))
+               ,(nonf-spec-error-msg (term NONFNV)))
+        assert-fspec-nonf)))
 
 (define-syntax-rule (eval-clj t)
   (apply-reduction-relation* -->v (term t)))
@@ -799,7 +831,7 @@
                           (term (fn () 1))
                           (term (assert-spec (fn () 1) (FSpec (number?) zero?)))
                           '(fn () 1)
-                          '(error argument-mismatch "Expected 0 arguments, but found 1" "Form: ((fn () 1) 1771)")))
+                          '(error argument-mismatch ("Expected 0 arguments, but found 1" "Form: ((fn () 1) 1771)"))))
 
 
 
@@ -844,3 +876,27 @@
 
 (test-equal (eval-clj (fn [x] (if (zero? x) nil (error missiles-launched))))
             '((fn [x] (if (zero? x) nil (error missiles-launched)))))
+
+(define-syntax-rule (rlang . args)
+  (with-rewriters
+      (lambda () (render-language . args))))
+
+(define-syntax-rule (rrr . args)
+  (with-rewriters
+      (lambda () (render-reduction-relation . args))))
+(define-syntax-rule (rmf . args)
+  (with-rewriters
+      (lambda () (render-metafunction . args))))
+
+#;
+(begin
+  (rlang Clojure "clojure-grammar.pdf")
+  (rlang ClojureSpec "clojurespec-grammar.pdf")
+  (rlang ClojureSpecHOF "clojurespechof-grammar.pdf")
+  
+  (rrr -->v "arrowv.pdf")
+  (rrr -->vspec "arrowvspec.pdf")
+  (rrr -->vspec-hof "arrowvspec-hof.pdf")
+  (rmf gen-spec* "gen-spec*.pdf" #:contract? true)
+  (rmf gen-spec*-hof "gen-spec*-hof.pdf" #:contract? true)
+  )
