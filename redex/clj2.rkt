@@ -6,6 +6,7 @@
 (require test-engine/racket-tests)
 (require redex/pict)
 (require pict)
+; uncomment this and add-atomic-rewriters! for pretty printing
 (require unstable/gui/redex)
 
 (define mf-font "Latin Modern Mono")
@@ -187,12 +188,9 @@
                    [(redex-match? Clojure N (term any))
                     (add1 (term any))]
                    [else (term (error "Bad arguments to inc" any))]))]
-  [(δ (zero? any) ,(cond
-                     [(redex-match? Clojure N (term any))
-                      (if (zero? (term any))
-                          (term true)
-                          (term false))]
-                     [else (term (error "Bad arguments to zero?"))]))]
+  [(δ (zero? any) ,(if (equal? 0 (term any))
+                       (term true)
+                       (term false)))]
   
   )
 
