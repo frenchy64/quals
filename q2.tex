@@ -109,7 +109,7 @@ called several hundred times with generated values conforming to \texttt{int?},
 and checks each call returns an \texttt{int?}.
 Then, \texttt{[1 2 3]} is eagerly checked against \texttt{(s/coll-of int?)}.
 The original \texttt{intmap} function is then called with the original arguments,
-yielding a value \texttt{(1 2 3)}. Instrumentation does not check return value specs,
+yielding a value \texttt{(2 3 4)}. Instrumentation does not check return value specs,
 so \texttt{(s/coll-of int?)} is ignored, and the original return value is passed to the calling
 context.
 
@@ -180,7 +180,8 @@ An error was found in the CrossClj data, however.
 To find a baseline number of projects using \texttt{clojure.spec}, we looked for occurrences of
 \texttt{s/def}, used to define spec
 aliases. It should greatly outnumber the number of \texttt{fdef}'s in the ecosystem---we were
-surprised to find CrossClj reports the opposite.
+surprised to find CrossClj reports the opposite, and
+we are almost certain these particular CrossClj metrics are incorrect.
 We identified that multiple occurrences of \texttt{s/def} in the same project are not always counted by CrossClj,
 so while CrossClj claims \texttt{s/def} occurs in more 60\% more projects than \texttt{fdef} (125), 
 CrossClj reports \texttt{s/def} only occurs in 349 top-level 
@@ -414,7 +415,7 @@ return values are not checked. Since we predicted programmers might have
 issues with \texttt{fspec}'s generative testing semantics, we were interested
 if \texttt{fspec}'s were more frequent than usual in the return position
 of \texttt{fdef} (where these semantics would be implicitly suppressed).
-In our investigation, we found no strong evidence that programmers preferred
+In our investigation, we found no particular evidence that programmers preferred
 \texttt{fspec} over \texttt{ifn?} in the return position---when they occurred in \texttt{fdef} forms,
 \texttt{fspec} was in the return position 18\% of the time (Figure~\ref{fspectable}),
 and \texttt{ifn?} was 10\% of the time (Figure~\ref{ifntable}).
@@ -441,14 +442,14 @@ and we found several examples in our experiments that support this view
 
 % how does no polymorphism interact with fspec semantics? are they more useful together?
 
-To tie back our investigation, what does this tell us about programmer preferences in an automatic spec annotation
+To tie back our investigation---what does this tell us about programmer preferences in an automatic spec annotation
 tool? At the very least, it tells us there is no simple ``fits all'' behavior---we found
 preferences were in (at least) two distinct camps.
 This implies that the tool should have some customizability between preferring
 \texttt{fspec} and \texttt{ifn?}, but which should be the default?
+
 Should the tool prefer more expressive, but possibly incorrect specs, over less
 expressive but specs that ``just work''?
-
 I don't think there is a single definitive answer---rather each occurrence of \texttt{fspec}
 comes with its own context and tradeoffs. Whether it occurs in the arguments or return of
 an \texttt{fdef}, in a heterogeneous or homogeneous map, or even nested in another \texttt{fspec}

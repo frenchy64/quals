@@ -111,7 +111,7 @@ Then several passes are applied to the resulting type and
 alias environments. First $squash\_vertically$
 (Section~\ref{squash-vertically}) creates local recursive
 types.
-Then $squash\_horizontally$ (Section~\label{squash-horizontally})
+Then $squash\_horizontally$ (Section~\ref{squash-horizontally})
 merges similar recursive types that occur in different type/alias
 environment entries.
 The overall time complexity is summarized in Section~\ref{overall-time-complexity}.
@@ -401,8 +401,8 @@ but then can free memory as it rules out invariants. For example, if
 means we can delete and free the memory recording \texttt{even(x)}.
 Alternatively, the building-up strategy uses the least memory storing
 known invariants/types at the beginning, but increases memory usage
-as more the more samples are collected. For example, if we known
-\texttt{x : Any}, and we observe \texttt{x = "a"} and \texttt{x = 1}
+as more the more samples are collected. For example, if we know
+\texttt{x : Bottom}, and we observe \texttt{x = "a"} and \texttt{x = 1}
 at different points in the program, we must use more memory to
 store the union \texttt{x : String $\cup$ Integer} in our set of known invariants.
 
@@ -413,13 +413,13 @@ Examples of dynamic type inference include Rubydust \cite{An10dynamicinference},
 JSTrace \cite{saftoiu2010jstrace}, and TypeDevil \cite{pradel2015typedevil},
 and typically target untyped languages.
 
-There is some overlap between invariant detection and dynamic type inference
-tools. Usually, invariant detection detects very expressive relationships
-between program variables; for example, for array \texttt{a} and index
-\texttt{i} variables, a derived invariant might be \texttt{0 < a[i]}.
-On the other hand, dynamic type inference (or value profiling) often just records
-basic nominal or structural type information---it is generally applied to untyped
-languages where basic static type information is absent.
+%There is some overlap between invariant detection and dynamic type inference
+%tools. Usually, invariant detection detects very expressive relationships
+%between program variables; for example, for array \texttt{a} and index
+%\texttt{i} variables, a derived invariant might be \texttt{0 < a[i]}.
+%On the other hand, dynamic type inference (or value profiling) often just records
+%basic nominal or structural type information---it is generally applied to untyped
+%languages where basic static type information is absent.
 
 \subsubsection{Daikon's expressivity vs Typed Clojure's dynamic inference}
 
