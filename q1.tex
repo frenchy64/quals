@@ -27,7 +27,7 @@ to proxy-based higher-order contract checking (so, reasonable, with
 some constant overhead).
 
 Map and function wrappers are space-efficient with respect to the stack, with
-redundant wrapper of the same type collapsing to at most one level of wrapping.
+redundant wrappers of the same type collapsing to at most one level of wrapping.
 
 Some structural sharing of tracking data helps reduce the memory footprint
 of the tracking results. Specifically, the original source of a value
